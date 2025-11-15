@@ -289,3 +289,118 @@ export class FirebaseConfig {
 
 // Export singleton instance
 export const firebaseConfig = FirebaseConfig.getInstance();
+
+// Backup encryption utilities
+export class BackupCrypto {
+  private static readonly PBKDF2_ITERATIONS = 100000;
+  private static readonly AES_KEY_LENGTH = 256;
+  private static readonly AES_MODE = 'AES-GCM';
+
+  /**
+   * Generate a user-specific secret from user ID
+   */
+  static generateUserSecret(userId: string): string {
+    // In production, this should use a more secure method
+    // For now, create a deterministic secret from user ID
+    const encoder = new TextEncoder();
+    const data = encoder.encode(userId + '_backup_secret_salt');
+    return this.uint8ArrayToBase64(data);
+  }
+
+  /**
+   * Generate a random salt for key derivation
+   */
+  static generateSalt(): Uint8Array {
+    const salt = new Uint8Array(16);
+    crypto.getRandomValues(salt);
+    return salt;
+  }
+
+  /**
+   * Derive a backup encryption key from user secret and salt
+   */
+  static async deriveBackupKey(userSecret: string, salt: Uint8Array): Promise<CryptoKey> {
+    const encoder = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(userSecret),
+      'PBKDF2',
+      false,
+      ['deriveBits', 'deriveKey']
+    );
+
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: this.PBKDF2_ITERATIONS,
+        hash: 'SHA-256',
+      },
+      keyMaterial,
+      { name: this.AES_MODE, length: this.AES_KEY_LENGTH },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  /**
+   * Encrypt data with AES-GCM
+   */
+  static async encryptData(key: CryptoKey, data: Uint8Array): Promise<{ encryptedData: Uint8Array; iv: Uint8Array }> {
+    const iv = new Uint8Array(12); // 96-bit IV for GCM
+    crypto.getRandomValues(iv);
+
+    const encryptedData = await crypto.subtle.encrypt(
+      { name: this.AES_MODE, iv: iv },
+      key,
+      data
+    );
+
+    return {
+      encryptedData: new Uint8Array(encryptedData),
+      iv
+    };
+  }
+
+  /**
+   * Decrypt data with AES-GCM
+   */
+  static async decryptData(key: CryptoKey, encryptedData: Uint8Array, iv: Uint8Array): Promise<Uint8Array> {
+    const decryptedData = await crypto.subtle.decrypt(
+      { name: this.AES_MODE, iv: iv },
+      key,
+      encryptedData
+    );
+
+    return new Uint8Array(decryptedData);
+  }
+
+  /**
+   * Convert Uint8Array to base64 string
+   */
+  static uint8ArrayToBase64(array: Uint8Array): string {
+    const chunks = [];
+    const chunkSize = 1024;
+
+    for (let i = 0; i < array.length; i += chunkSize) {
+      const chunk = array.slice(i, i + chunkSize);
+      chunks.push(String.fromCharCode.apply(null, Array.from(chunk)));
+    }
+
+    return btoa(chunks.join(''));
+  }
+
+  /**
+   * Convert base64 string to Uint8Array
+   */
+  static base64ToUint8Array(base64: string): Uint8Array {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    return bytes;
+  }
+}
