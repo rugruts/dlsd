@@ -1,0 +1,10 @@
+{
+  "name": "dumpsack-wallet",
+  "private": true,
+  "packageManager": "pnpm@latest",
+  "workspaces": [
+    "app",
+    "extensions/chrome",
+    "packages/*"
+  ]
+}
