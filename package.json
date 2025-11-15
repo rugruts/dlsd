@@ -1,10 +1,17 @@
 {
-  "name": "dumpsack-wallet",
+  "name": "dumpsack-monorepo",
   "private": true,
-  "packageManager": "pnpm@latest",
+  "packageManager": "pnpm@9",
   "workspaces": [
     "app",
     "extensions/chrome",
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "dev:app": "pnpm --filter @dumpsack/app start",
+    "dev:ext": "pnpm --filter @dumpsack/extension dev",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm -r run lint",
+    "build": "pnpm -r run build"
+  }
 }

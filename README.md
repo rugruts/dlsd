@@ -39,7 +39,7 @@ FIREBASE_APP_ID=1:123456789:web:abcdef123456
 
 # RPC Configuration
 EXPO_PUBLIC_GBA_RPC_PRIMARY=https://rpc.gorbagana.wtf/
-EXPO_PUBLIC_GBA_RPC_FALLBACK=https://api.mainnet-beta.solana.com
+EXPO_PUBLIC_GBA_RPC_FALLBACK=
 
 # Swap Configuration
 EXPO_PUBLIC_SWAP_AGGREGATOR_URL=https://api.jup.ag
@@ -76,7 +76,7 @@ VITE_FIREBASE_PROJECT_ID=your_project_id
 
 # RPC (VITE_ prefix for Vite)
 VITE_GBA_RPC_PRIMARY=https://rpc.gorbagana.wtf/
-VITE_GBA_RPC_FALLBACK=https://api.mainnet-beta.solana.com
+VITE_GBA_RPC_FALLBACK=
 
 # Feature flags (VITE_ prefix)
 VITE_ENABLE_THRONE_LINKS=true

@@ -1,25 +1,18 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
+    "target": "ES2022",
     "module": "ESNext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@shared-types/*": ["packages/shared-types/*"],
-      "@shared-utils/*": ["packages/shared-utils/*"]
-    }
-  },
-  "exclude": ["node_modules"]
+      "@dumpsack/shared-utils": ["packages/shared-utils/index.ts"],
+      "@dumpsack/shared-types": ["packages/shared-types/index.ts"],
+      "@dumpsack/": ["packages/"]
+    },
+    "strict": true,
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true
+  }
 }

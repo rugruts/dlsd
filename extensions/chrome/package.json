@@ -1,11 +1,12 @@
 {
-  "name": "@dumpsack-wallet/extension",
-  "version": "1.0.0",
-  "type": "module",
+  "name": "@dumpsack/extension",
+  "private": true,
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint ."
   },
   "dependencies": {
     "react": "^18.2.0",

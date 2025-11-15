@@ -1,12 +1,12 @@
 {
-  "name": "@dumpsack-wallet/app",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "@dumpsack/app",
+  "private": true,
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint ."
   },
   "dependencies": {
     "expo": "~49.0.15",
