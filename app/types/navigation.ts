@@ -7,13 +7,16 @@ export type RootStackParamList = {
   Alias: undefined;
   MainTabs: undefined;
   Send: { mint?: string } | undefined;
-  Receive: undefined;
   Swap: { inputMint?: string; outputMint?: string } | undefined;
   Staking: undefined;
   Settings: undefined;
   TokenDetails: { token: TokenItem };
   NFTGallery: undefined;
   NFTDetail: { nft: NftItem };
+  SendSelect: { token?: TokenItem };
+  SendReview: { token: TokenItem; recipient: string; amount: string };
+  SendSuccess: { signature: string };
+  Receive: undefined;
 };
 
 export type MainTabParamList = {

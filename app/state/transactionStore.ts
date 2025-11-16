@@ -1,48 +1,123 @@
 import { create } from 'zustand';
-import { Transaction, TransactionStatus } from '../../packages/shared-types';
+import { PublicKey } from '@dumpsack/shared-utils/solana';
+import { useAuthStore } from './authStore';
+import { useWalletStore } from './walletStore';
+import { buildSendGOR, buildSendSPL, estimateFees } from '../services/transactions/transactionBuilder';
+import { simulateTransaction } from '../services/transactions/transactionSimulator';
+import { sendAndConfirm } from '../services/transactions/transactionSender';
+import { TokenItem } from '../types/wallet';
 
 interface TransactionState {
-  transactions: Transaction[];
-  addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp' | 'status'>) => string;
-  updateTransactionStatus: (id: string, status: TransactionStatus, txHash?: string) => void;
-  getTransaction: (id: string) => Transaction | undefined;
-  clearTransactions: () => void;
+  sending: boolean;
+  lastSignature?: string;
+  error?: string;
 }
 
-export const useTransactionStore = create<TransactionState>((set, get) => ({
-  transactions: [],
+interface TransactionActions {
+  sendGOR: (to: string, amount: number) => Promise<void>;
+  sendToken: (to: string, token: TokenItem, amount: number) => Promise<void>;
+  _setState: (state: Partial<TransactionState>) => void;
+}
 
-  addTransaction: (tx) => {
-    const id = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newTx: Transaction = {
-      ...tx,
-      id,
-      timestamp: Date.now(),
-      status: 'pending',
-    };
+type TransactionStore = TransactionState & TransactionActions;
 
-    set((state) => ({
-      transactions: [newTx, ...state.transactions],
-    }));
+export const useTransactionStore = create<TransactionStore>((set, get) => ({
+  // Initial state
+  sending: false,
+  lastSignature: undefined,
+  error: undefined,
 
-    return id;
+  sendGOR: async (to: string, amount: number) => {
+    const { publicKey } = useAuthStore.getState();
+    if (!publicKey) throw new Error('No wallet available');
+
+    set({ sending: true, error: undefined });
+
+    try {
+      const fromPubkey = new PublicKey(publicKey);
+      const toPubkey = new PublicKey(to);
+
+      // Build transaction
+      const { transaction, blockhash, lastValidBlockHeight } = await buildSendGOR({
+        fromPubkey,
+        toPubkey,
+        lamports: amount,
+      });
+
+      // Estimate fees
+      const feeEstimate = await estimateFees(transaction);
+
+      // Simulate
+      const simulation = await simulateTransaction(transaction);
+      if (!simulation.success) {
+        throw new Error(simulation.errorMessage || 'Transaction simulation failed');
+      }
+
+      // Send and confirm
+      const signature = await sendAndConfirm(transaction, {
+        blockhash,
+        lastValidBlockHeight,
+      });
+
+      // Update stores
+      set({ sending: false, lastSignature: signature });
+      await useWalletStore.getState().refresh(); // Refresh wallet data
+
+    } catch (error) {
+      set({
+        sending: false,
+        error: error instanceof Error ? error.message : 'Transaction failed',
+      });
+      throw error;
+    }
   },
 
-  updateTransactionStatus: (id, status, txHash) => {
-    set((state) => ({
-      transactions: state.transactions.map((tx) =>
-        tx.id === id
-          ? { ...tx, status, txHash: txHash || tx.txHash }
-          : tx
-      ),
-    }));
+  sendToken: async (to: string, token: TokenItem, amount: number) => {
+    const { publicKey } = useAuthStore.getState();
+    if (!publicKey) throw new Error('No wallet available');
+
+    set({ sending: true, error: undefined });
+
+    try {
+      const fromPubkey = new PublicKey(publicKey);
+      const toPubkey = new PublicKey(to);
+      const mint = new PublicKey(token.mint);
+
+      // Build transaction
+      const { transaction, blockhash, lastValidBlockHeight } = await buildSendSPL({
+        fromPubkey,
+        toPubkey,
+        mint,
+        amount,
+      });
+
+      // Estimate fees
+      const feeEstimate = await estimateFees(transaction);
+
+      // Simulate
+      const simulation = await simulateTransaction(transaction);
+      if (!simulation.success) {
+        throw new Error(simulation.errorMessage || 'Transaction simulation failed');
+      }
+
+      // Send and confirm
+      const signature = await sendAndConfirm(transaction, {
+        blockhash,
+        lastValidBlockHeight,
+      });
+
+      // Update stores
+      set({ sending: false, lastSignature: signature });
+      await useWalletStore.getState().refresh(); // Refresh wallet data
+
+    } catch (error) {
+      set({
+        sending: false,
+        error: error instanceof Error ? error.message : 'Transaction failed',
+      });
+      throw error;
+    }
   },
 
-  getTransaction: (id) => {
-    return get().transactions.find((tx) => tx.id === id);
-  },
-
-  clearTransactions: () => {
-    set({ transactions: [] });
-  },
+  _setState: (state) => set(state),
 }));
