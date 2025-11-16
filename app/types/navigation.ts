@@ -20,6 +20,11 @@ export type RootStackParamList = {
   Swap: undefined;
   SwapReview: { quote: SwapQuote };
   SwapSuccess: { signature: string };
+  StakingDashboard: undefined;
+  ValidatorList: undefined;
+  StakeAction: { mode: 'delegate' | 'delegateExisting' | 'deactivate' | 'withdraw'; stakeAccount?: string; votePubkey?: string };
+  StakeReview: { action: any; stakeData: any };
+  StakeResult: { signature: string };
 };
 
 export type MainTabParamList = {
