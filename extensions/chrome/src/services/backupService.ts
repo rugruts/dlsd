@@ -143,7 +143,7 @@ export class ExtensionBackupService {
         const data = docSnap.data() as FirestoreBackupDocument;
         return {
           exists: true,
-          updatedAt: data.updatedAt.toDate(),
+          updatedAt: data.updatedAt,
           version: data.version,
         };
       }

@@ -13,5 +13,14 @@
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint",
     "build": "pnpm -r run build"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "@types/node": "^24.10.1",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "firebase": "^10.14.1"
   }
 }
