@@ -292,8 +292,16 @@ export class FirebaseConfig {
 // Export singleton instance
 export const firebaseConfig = FirebaseConfig.getInstance();
 
-// Error classes
-export { PanicBunkerLockedError, WalletLockedError, InsufficientFundsError, NetworkError, InvalidTransactionError } from './errors';
+// Error classes and utilities
+export {
+  PanicBunkerLockedError,
+  WalletLockedError,
+  InsufficientFundsError,
+  NetworkError,
+  InvalidTransactionError,
+  ErrorUtils,
+  type UserError
+} from './errors';
 
 // Backup encryption utilities
 export class BackupCrypto {

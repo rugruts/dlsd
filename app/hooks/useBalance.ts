@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { PublicKey } from '@solana/web3.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createRpcClient } from '../services/blockchain/rpcClient';
 
 const rpcClient = createRpcClient();
+const CACHE_KEY_PREFIX = 'balance_cache_';
+const CACHE_DURATION = 30000; // 30 seconds
 
 export function useBalance(pubkey: PublicKey | null) {
   const [balance, setBalance] = useState<bigint | null>(null);
