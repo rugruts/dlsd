@@ -1,3 +1,5 @@
+import { TokenItem, NftItem } from './wallet';
+
 export type RootStackParamList = {
   Onboarding: undefined;
   Login: undefined;
@@ -9,6 +11,9 @@ export type RootStackParamList = {
   Swap: { inputMint?: string; outputMint?: string } | undefined;
   Staking: undefined;
   Settings: undefined;
+  TokenDetails: { token: TokenItem };
+  NFTGallery: undefined;
+  NFTDetail: { nft: NftItem };
 };
 
 export type MainTabParamList = {
