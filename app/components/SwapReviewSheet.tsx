@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { PublicKey } from '@solana/web3.js';
 import { swapService } from '../services/swaps/swapService';
 import { useTransactionStore } from '../state/transactionStore';
 import { useSecurityStore } from '../state/securityStore';

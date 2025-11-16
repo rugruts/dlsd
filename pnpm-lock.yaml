@@ -63,6 +63,9 @@ importers:
       expo-status-bar:
         specifier: ~1.6.0
         version: 1.6.0
+      fast-text-encoding:
+        specifier: ^1.0.6
+        version: 1.0.6
       firebase:
         specifier: ^10.7.1
         version: 10.14.1
@@ -3054,6 +3057,9 @@ packages:
 
   fast-stable-stringify@1.0.0:
     resolution: {integrity: sha512-wpYMUmFu5f00Sm0cj2pfivpmawLZ0NKdviQ4w9zJeR8JVtOpOxHmLaJuj0vxvGqMJQWyP/COUkF75/57OKyRag==}
+
+  fast-text-encoding@1.0.6:
+    resolution: {integrity: sha512-VhXlQgj9ioXCqGstD37E/HBeqEGV/qOD/kmbVG8h5xKBYvM1L3lR1Zn4555cQ8GkYbJa8aJSipLPndE1k6zK2w==}
 
   fast-uri@3.1.0:
     resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
@@ -9924,6 +9930,8 @@ snapshots:
   fast-levenshtein@2.0.6: {}
 
   fast-stable-stringify@1.0.0: {}
+
+  fast-text-encoding@1.0.6: {}
 
   fast-uri@3.1.0: {}
 

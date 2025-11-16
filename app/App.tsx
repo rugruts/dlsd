@@ -1,5 +1,6 @@
 import 'react-native-get-random-values';
 import 'react-native-polyfill-globals/auto';
+import 'fast-text-encoding';
 import { Buffer } from 'buffer';
 import { decode as atob, encode as btoa } from 'base-64';
 
