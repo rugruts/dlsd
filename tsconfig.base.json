@@ -5,6 +5,7 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./*"],
       "@dumpsack/shared-utils": ["packages/shared-utils/index.ts"],
       "@dumpsack/shared-types": ["packages/shared-types/index.ts"],
       "@dumpsack/": ["packages/"]
