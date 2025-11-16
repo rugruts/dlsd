@@ -292,6 +292,9 @@ export class FirebaseConfig {
 // Export singleton instance
 export const firebaseConfig = FirebaseConfig.getInstance();
 
+// Firebase services (initialized)
+export { db, auth } from './firebase';
+
 // Error classes and utilities
 export {
   PanicBunkerLockedError,

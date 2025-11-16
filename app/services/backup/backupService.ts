@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
+import { db } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
 import { BackupCrypto } from '@dumpsack/shared-utils';
 import {
@@ -22,7 +22,7 @@ import {
 const BACKUP_VERSION = 1;
 
 export class BackupService {
-  private db = getFirestore();
+  private db = db;
 
   async createLocalBackup(passphrase: string): Promise<BackupPayloadV1> {
     if (!appConfig.features.enableBackup) {
