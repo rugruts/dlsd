@@ -1,6 +1,7 @@
 import { PublicKey, Keypair, Transaction, sendAndConfirmRawTransaction } from '@dumpsack/shared-utils/solana';
 import { loadPrivateKey, savePrivateKey } from '../auth/secureStorage';
-import { BackupCrypto } from '@dumpsack/shared-utils';
+import { BackupCrypto, PanicBunkerLockedError } from '@dumpsack/shared-utils';
+import { panicService } from '../panicService';
 
 export interface WalletKeypair {
   publicKey: PublicKey;
@@ -76,6 +77,12 @@ class WalletService {
     if (!this.keypair) {
       throw new Error('Wallet not initialized');
     }
+
+    // Check panic bunker lock
+    if (panicService.isLocked()) {
+      throw new PanicBunkerLockedError();
+    }
+
     tx.sign(this.keypair);
     return tx;
   }
@@ -87,6 +94,12 @@ class WalletService {
     if (!this.keypair) {
       throw new Error('Wallet not initialized');
     }
+
+    // Check panic bunker lock
+    if (panicService.isLocked()) {
+      throw new PanicBunkerLockedError();
+    }
+
     return txs.map(tx => {
       tx.sign(this.keypair!);
       return tx;

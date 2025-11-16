@@ -31,6 +31,10 @@ export type RootStackParamList = {
   BackupCloud: undefined;
   BackupRestore: undefined;
   BackupRestoreSuccess: undefined;
+  PanicBunkerDashboard: undefined;
+  PanicLockScreen: undefined;
+  EmergencySweepScreen: undefined;
+  PanicSettingsScreen: undefined;
 };
 
 export type MainTabParamList = {

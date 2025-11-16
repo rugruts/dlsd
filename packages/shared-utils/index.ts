@@ -29,6 +29,7 @@ export interface FeatureFlags {
   enableBackup: boolean;
   enableBiometrics: boolean;
   enableNotifications: boolean;
+  enablePanicBunker: boolean;
 }
 
 export interface DumpSackConfig {
@@ -144,6 +145,7 @@ class ConfigManager {
         enableBackup: true,
         enableBiometrics: true,
         enableNotifications: true,
+        enablePanicBunker: true,
       },
       firebase: {
         apiKey: '',
@@ -289,6 +291,9 @@ export class FirebaseConfig {
 
 // Export singleton instance
 export const firebaseConfig = FirebaseConfig.getInstance();
+
+// Error classes
+export { PanicBunkerLockedError, WalletLockedError, InsufficientFundsError, NetworkError, InvalidTransactionError } from './errors';
 
 // Backup encryption utilities
 export class BackupCrypto {
