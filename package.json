@@ -11,14 +11,23 @@
     "dev:app": "pnpm --filter @dumpsack/app start",
     "dev:ext": "pnpm --filter @dumpsack/extension dev",
     "typecheck": "pnpm -r run typecheck",
-    "lint": "pnpm -r run lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "build": "pnpm -r run build"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@types/bn.js": "^5.2.0",
     "@types/node": "^24.10.1",
     "eslint": "^9.39.1",
-    "typescript": "^5.9.3"
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-import-x": "^4.16.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-native": "^4.1.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4"
   },
   "dependencies": {
     "firebase": "^10.14.1"
