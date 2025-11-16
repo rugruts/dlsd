@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Login: undefined;
   ImportWallet: undefined;
+  Alias: undefined;
   MainTabs: undefined;
   Send: { mint?: string } | undefined;
   Receive: undefined;

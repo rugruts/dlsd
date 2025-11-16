@@ -1,40 +1,94 @@
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
+import { doc, setDoc, getDoc, query, where, collection, getDocs } from 'firebase/firestore';
+import { firebaseConfig } from '@dumpsack/shared-utils';
 
-// TODO: Reuse Firebase app from authService
-const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-};
+export interface AliasRecord {
+  alias: string;
+  address: string;
+  userId: string;
+  createdAt: Date;
+}
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const ALIASES_COLLECTION = 'userAliases';
 
-export class AliasService {
-  static async checkAliasAvailability(alias: string): Promise<boolean> {
-    const docRef = doc(db, 'aliases', alias);
-    const docSnap = await getDoc(docRef);
-    return !docSnap.exists();
+/**
+ * Check if an alias is available
+ */
+export async function isAliasAvailable(alias: string): Promise<boolean> {
+  try {
+    const db = await firebaseConfig.getFirestore();
+    const q = query(collection(db, ALIASES_COLLECTION), where('alias', '==', alias));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
+  } catch (error) {
+    console.error('Failed to check alias availability:', error);
+    throw new Error('Failed to check alias availability');
   }
+}
 
-  static async createAlias(alias: string, userId: string): Promise<void> {
-    const isAvailable = await this.checkAliasAvailability(alias);
-    if (!isAvailable) {
-      throw new Error('Alias already taken');
+/**
+ * Register a new alias
+ */
+export async function registerAlias(alias: string, address: string, userId: string): Promise<void> {
+  try {
+    // First check if available
+    const available = await isAliasAvailable(alias);
+    if (!available) {
+      throw new Error('Alias is already taken');
     }
 
-    await setDoc(doc(db, 'aliases', alias), {
+    const db = await firebaseConfig.getFirestore();
+    const aliasDoc: AliasRecord = {
+      alias,
+      address,
       userId,
       createdAt: new Date(),
-    });
-  }
+    };
 
-  static async getUserByAlias(alias: string): Promise<string | null> {
-    const docRef = doc(db, 'aliases', alias);
+    await setDoc(doc(db, ALIASES_COLLECTION, alias), aliasDoc);
+  } catch (error) {
+    console.error('Failed to register alias:', error);
+    throw error;
+  }
+}
+
+/**
+ * Resolve an alias to an address
+ */
+export async function resolveAlias(alias: string): Promise<string | null> {
+  try {
+    const db = await firebaseConfig.getFirestore();
+    const docRef = doc(db, ALIASES_COLLECTION, alias);
     const docSnap = await getDoc(docRef);
+
     if (docSnap.exists()) {
-      return docSnap.data().userId;
+      const data = docSnap.data() as AliasRecord;
+      return data.address;
     }
+
     return null;
+  } catch (error) {
+    console.error('Failed to resolve alias:', error);
+    throw new Error('Failed to resolve alias');
+  }
+}
+
+/**
+ * Get alias record by user ID
+ */
+export async function getAliasByUserId(userId: string): Promise<AliasRecord | null> {
+  try {
+    const db = await firebaseConfig.getFirestore();
+    const q = query(collection(db, ALIASES_COLLECTION), where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      return doc.data() as AliasRecord;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Failed to get alias by user ID:', error);
+    throw new Error('Failed to get user alias');
   }
 }

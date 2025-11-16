@@ -1,173 +1,125 @@
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
-import { BackupCrypto } from '../../../packages/shared-utils';
-import { WalletBackup, BackupKeyMaterial, FirestoreBackupDocument } from '../../../packages/shared-types';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { firebaseConfig } from '@dumpsack/shared-utils';
+import { BackupCrypto } from '@dumpsack/shared-utils';
+import { loadPrivateKey } from '../auth/secureStorage';
 
-// TODO: Initialize Firebase app - this should be done once in the app
-// const firebaseConfig = { ... };
-// const app = initializeApp(firebaseConfig);
-const db = getFirestore(); // Assume initialized elsewhere
+export interface BackupData {
+  encryptedPrivateKey: string;
+  publicKey: string;
+  userId: string;
+  alias?: string;
+}
 
-export class BackupService {
-  private userId: string;
-  private userSecret: string;
+const BACKUP_COLLECTION = 'userBackups';
 
-  constructor(userId: string) {
-    this.userId = userId;
-    this.userSecret = BackupCrypto.generateUserSecret(userId);
-  }
-
-  /**
-   * Create and upload encrypted backup
-   */
-  async createBackup(keyMaterial: BackupKeyMaterial): Promise<void> {
-    try {
-      // Serialize key material to JSON
-      const keyData = JSON.stringify(keyMaterial);
-      const dataBytes = new TextEncoder().encode(keyData);
-
-      // Generate salt for this backup
-      const salt = BackupCrypto.generateSalt();
-
-      // Derive encryption key
-      const encryptionKey = await BackupCrypto.deriveBackupKey(this.userSecret, salt);
-
-      // Encrypt the data
-      const { encryptedData, iv } = await BackupCrypto.encryptData(encryptionKey, dataBytes);
-
-      // Combine salt + iv + encrypted data
-      const combinedData = new Uint8Array(salt.length + iv.length + encryptedData.length);
-      combinedData.set(salt, 0);
-      combinedData.set(iv, salt.length);
-      combinedData.set(encryptedData, salt.length + iv.length);
-
-      // Convert to base64 for storage
-      const encryptedBackup = BackupCrypto.uint8ArrayToBase64(combinedData);
-
-      // Create backup document
-      const backupDoc: Omit<FirestoreBackupDocument, 'userId'> = {
-        encryptedBackup,
-        updatedAt: new Date(),
-        version: 1,
-      };
-
-      // Upload to Firestore
-      const docRef = doc(db, 'userWalletBackups', this.userId);
-      await setDoc(docRef, backupDoc);
-
-    } catch (error) {
-      console.error('Failed to create backup:', error);
-      throw new Error('Backup creation failed');
+/**
+ * Create encrypted backup of wallet data
+ */
+export async function createBackup(userId: string, publicKey: string, alias?: string): Promise<void> {
+  try {
+    const encryptedPrivateKey = await loadPrivateKey();
+    if (!encryptedPrivateKey) {
+      throw new Error('No wallet data to backup');
     }
-  }
 
-  /**
-   * Fetch encrypted backup from Firestore
-   */
-  async fetchBackup(): Promise<string | null> {
-    try {
-      const docRef = doc(db, 'userWalletBackups', this.userId);
-      const docSnap = await getDoc(docRef);
+    const backupData: BackupData = {
+      encryptedPrivateKey,
+      publicKey,
+      userId,
+      alias,
+    };
 
-      if (docSnap.exists()) {
-        const data = docSnap.data() as FirestoreBackupDocument;
-        return data.encryptedBackup;
-      }
+    // Serialize and encrypt the backup data
+    const dataString = JSON.stringify(backupData);
+    const dataBytes = new TextEncoder().encode(dataString);
 
-      return null;
-    } catch (error) {
-      console.error('Failed to fetch backup:', error);
-      throw new Error('Backup fetch failed');
-    }
-  }
+    // Generate salt for this backup
+    const salt = BackupCrypto.generateSalt();
 
-  /**
-   * Decrypt and restore backup
-   */
-  async restoreBackup(): Promise<BackupKeyMaterial> {
-    try {
-      const encryptedBackup = await this.fetchBackup();
-      if (!encryptedBackup) {
-        throw new Error('No backup found');
-      }
+    // Derive encryption key from user ID (deterministic)
+    const userSecret = BackupCrypto.generateUserSecret(userId);
+    const encryptionKey = await BackupCrypto.deriveBackupKey(userSecret, salt);
 
-      // Decode from base64
-      const combinedData = BackupCrypto.base64ToUint8Array(encryptedBackup);
+    // Encrypt the data
+    const { encryptedData, iv } = await BackupCrypto.encryptData(encryptionKey, dataBytes);
 
-      // Extract salt, iv, and encrypted data
-      const salt = combinedData.slice(0, 16); // 16 bytes salt
-      const iv = combinedData.slice(16, 28); // 12 bytes IV
-      const encryptedData = combinedData.slice(28);
+    // Combine salt + iv + encrypted data
+    const combinedData = new Uint8Array(salt.length + iv.length + encryptedData.length);
+    combinedData.set(salt, 0);
+    combinedData.set(iv, salt.length);
+    combinedData.set(encryptedData, salt.length + iv.length);
 
-      // Derive decryption key
-      const decryptionKey = await BackupCrypto.deriveBackupKey(this.userSecret, salt);
+    // Convert to base64 for storage
+    const encryptedBackup = BackupCrypto.uint8ArrayToBase64(combinedData);
 
-      // Decrypt the data
-      const decryptedBytes = await BackupCrypto.decryptData(decryptionKey, encryptedData, iv);
+    const db = await firebaseConfig.getFirestore();
+    const backupDoc = {
+      encryptedBackup,
+      userId,
+      createdAt: new Date(),
+      version: 1,
+    };
 
-      // Parse JSON
-      const keyDataString = new TextDecoder().decode(decryptedBytes);
-      const keyMaterial: BackupKeyMaterial = JSON.parse(keyDataString);
-
-      return keyMaterial;
-
-    } catch (error) {
-      console.error('Failed to restore backup:', error);
-      throw new Error('Backup restoration failed');
-    }
-  }
-
-  /**
-   * Update existing backup
-   */
-  async updateBackup(keyMaterial: BackupKeyMaterial): Promise<void> {
-    try {
-      const encryptedBackup = await this.fetchBackup();
-      if (!encryptedBackup) {
-        // No existing backup, create new one
-        return this.createBackup(keyMaterial);
-      }
-
-      // For updates, we recreate the backup with new timestamp
-      await this.createBackup(keyMaterial);
-
-    } catch (error) {
-      console.error('Failed to update backup:', error);
-      throw new Error('Backup update failed');
-    }
-  }
-
-  /**
-   * Delete backup (for account deletion, etc.)
-   */
-  async deleteBackup(): Promise<void> {
-    try {
-      const docRef = doc(db, 'userWalletBackups', this.userId);
-      await updateDoc(docRef, {
-        encryptedBackup: null, // Or delete the document entirely
-        updatedAt: new Date(),
-      });
-    } catch (error) {
-      console.error('Failed to delete backup:', error);
-      throw new Error('Backup deletion failed');
-    }
-  }
-
-  /**
-   * Check if backup exists
-   */
-  async hasBackup(): Promise<boolean> {
-    try {
-      const encryptedBackup = await this.fetchBackup();
-      return encryptedBackup !== null;
-    } catch {
-      return false;
-    }
+    await setDoc(doc(db, BACKUP_COLLECTION, userId), backupDoc);
+  } catch (error) {
+    console.error('Failed to create backup:', error);
+    throw new Error('Backup creation failed');
   }
 }
 
-// Factory function to create backup service for a user
-export function createBackupService(userId: string): BackupService {
-  return new BackupService(userId);
+/**
+ * Restore wallet data from backup
+ */
+export async function restoreBackup(userId: string): Promise<BackupData> {
+  try {
+    const db = await firebaseConfig.getFirestore();
+    const docRef = doc(db, BACKUP_COLLECTION, userId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      throw new Error('No backup found');
+    }
+
+    const data = docSnap.data();
+    const encryptedBackup = data.encryptedBackup as string;
+
+    // Decode from base64
+    const combinedData = BackupCrypto.base64ToUint8Array(encryptedBackup);
+
+    // Extract salt, iv, and encrypted data
+    const salt = combinedData.slice(0, 16);
+    const iv = combinedData.slice(16, 28);
+    const encryptedData = combinedData.slice(28);
+
+    // Derive decryption key
+    const userSecret = BackupCrypto.generateUserSecret(userId);
+    const decryptionKey = await BackupCrypto.deriveBackupKey(userSecret, salt);
+
+    // Decrypt the data
+    const decryptedBytes = await BackupCrypto.decryptData(decryptionKey, encryptedData, iv);
+
+    // Parse JSON
+    const dataString = new TextDecoder().decode(decryptedBytes);
+    const backupData: BackupData = JSON.parse(dataString);
+
+    return backupData;
+  } catch (error) {
+    console.error('Failed to restore backup:', error);
+    throw new Error('Backup restoration failed');
+  }
+}
+
+/**
+ * Check if backup exists
+ */
+export async function hasBackup(userId: string): Promise<boolean> {
+  try {
+    const db = await firebaseConfig.getFirestore();
+    const docRef = doc(db, BACKUP_COLLECTION, userId);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists();
+  } catch (error) {
+    console.error('Failed to check backup:', error);
+    return false;
+  }
 }
