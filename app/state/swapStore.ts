@@ -1,0 +1,103 @@
+import { create } from 'zustand';
+import { PublicKey } from '@dumpsack/shared-utils/solana';
+import { useAuthStore } from './authStore';
+import { useWalletStore } from './walletStore';
+import { getQuote } from '../services/swap/quoteService';
+import { createSwapTransaction, simulateSwap, executeSwap } from '../services/swap/swapService';
+import { SwapQuote, SwapResult } from '../types/swap';
+
+interface SwapState {
+  loading: boolean;
+  quote?: SwapQuote;
+  result?: SwapResult;
+  error?: string;
+}
+
+interface SwapActions {
+  fetchQuote: (inputMint: string, outputMint: string, amount: string) => Promise<void>;
+  performSwap: () => Promise<void>;
+  reset: () => void;
+  _setState: (state: Partial<SwapState>) => void;
+}
+
+type SwapStore = SwapState & SwapActions;
+
+export const useSwapStore = create<SwapStore>((set, get) => ({
+  // Initial state
+  loading: false,
+  quote: undefined,
+  result: undefined,
+  error: undefined,
+
+  fetchQuote: async (inputMint: string, outputMint: string, amount: string) => {
+    set({ loading: true, error: undefined });
+
+    try {
+      const quote = await getQuote(inputMint, outputMint, amount);
+      set({ quote, loading: false });
+    } catch (error) {
+      set({
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to get quote',
+      });
+      throw error;
+    }
+  },
+
+  performSwap: async () => {
+    const { quote } = get();
+    const { publicKey } = useAuthStore.getState();
+
+    if (!quote || !publicKey) {
+      throw new Error('No quote available or wallet not connected');
+    }
+
+    set({ loading: true, error: undefined });
+
+    try {
+      const userPubkey = new PublicKey(publicKey);
+
+      // Create swap transaction
+      const transaction = await createSwapTransaction(quote, userPubkey);
+
+      // Simulate
+      const simulation = await simulateSwap(transaction);
+      if (!simulation.success) {
+        throw new Error(simulation.errorMessage || 'Transaction simulation failed');
+      }
+
+      // Execute
+      const signature = await executeSwap(transaction);
+
+      const result: SwapResult = {
+        signature,
+        inputAmount: quote.inAmount,
+        outputAmount: quote.outAmount,
+        fee: quote.fee,
+      };
+
+      set({ result, loading: false });
+
+      // Refresh wallet data
+      await useWalletStore.getState().refresh();
+
+    } catch (error) {
+      set({
+        loading: false,
+        error: error instanceof Error ? error.message : 'Swap failed',
+      });
+      throw error;
+    }
+  },
+
+  reset: () => {
+    set({
+      loading: false,
+      quote: undefined,
+      result: undefined,
+      error: undefined,
+    });
+  },
+
+  _setState: (state) => set(state),
+}));

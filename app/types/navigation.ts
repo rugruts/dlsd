@@ -1,4 +1,5 @@
 import { TokenItem, NftItem } from './wallet';
+import { SwapQuote } from './swap';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -7,7 +8,6 @@ export type RootStackParamList = {
   Alias: undefined;
   MainTabs: undefined;
   Send: { mint?: string } | undefined;
-  Swap: { inputMint?: string; outputMint?: string } | undefined;
   Staking: undefined;
   Settings: undefined;
   TokenDetails: { token: TokenItem };
@@ -17,6 +17,9 @@ export type RootStackParamList = {
   SendReview: { token: TokenItem; recipient: string; amount: string };
   SendSuccess: { signature: string };
   Receive: undefined;
+  Swap: undefined;
+  SwapReview: { quote: SwapQuote };
+  SwapSuccess: { signature: string };
 };
 
 export type MainTabParamList = {
