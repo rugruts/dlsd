@@ -25,6 +25,12 @@ export type RootStackParamList = {
   StakeAction: { mode: 'delegate' | 'delegateExisting' | 'deactivate' | 'withdraw'; stakeAccount?: string; votePubkey?: string };
   StakeReview: { action: any; stakeData: any };
   StakeResult: { signature: string };
+  BackupDashboard: undefined;
+  BackupCreate: undefined;
+  BackupExport: { backupPayload: any };
+  BackupCloud: undefined;
+  BackupRestore: undefined;
+  BackupRestoreSuccess: undefined;
 };
 
 export type MainTabParamList = {
