@@ -1,14 +1,27 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
 jobs:
-  check:
+  lint-typecheck-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
+        with:
+          version: 9
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with:
+          node-version: 20
+          cache: 'pnpm'
       - run: pnpm install
-      - run: pnpm -r run typecheck
-      - run: pnpm -r run lint
+      - name: Lint (monorepo)
+        run: pnpm -r run lint
+      - name: Typecheck (monorepo)
+        run: pnpm -r run typecheck
+      - name: Build extension (Vite)
+        working-directory: extensions/chrome
+        run: pnpm run build
+      - name: Expo preflight (no build) — optional
+        working-directory: app
+        run: npx expo-doctor || true
