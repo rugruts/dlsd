@@ -1,11 +1,9 @@
+import { getSupabase, appConfig, BackupCrypto } from '@dumpsack/shared-utils';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { getSupabase } from '@dumpsack/shared-utils';
-import { appConfig } from '@dumpsack/shared-utils';
-import { BackupCrypto } from '@dumpsack/shared-utils';
-import {
+
+import type {
   BackupPayloadV1,
-  BackupMetadata,
   BackupDecryptedBundle,
   CloudBackupDocument,
   BackupValidationResult
@@ -197,28 +195,31 @@ export class BackupService {
     }
   }
 
-  async validateBackupIntegrity(payload: any): Promise<BackupValidationResult> {
+  async validateBackupIntegrity(payload: unknown): Promise<BackupValidationResult> {
     if (!validateBackupPayload(payload)) {
       return { isValid: false, error: 'Invalid backup format' };
     }
 
-    if (payload.version !== BACKUP_VERSION) {
+    // Type guard passed, now we can safely cast
+    const validPayload = payload as BackupPayloadV1;
+
+    if (validPayload.version !== BACKUP_VERSION) {
       return {
         isValid: false,
-        error: `Unsupported backup version: ${payload.version}`,
-        version: payload.version,
+        error: `Unsupported backup version: ${validPayload.version}`,
+        version: validPayload.version,
       };
     }
 
     // Verify checksum
-    const encryptedData = base64ToUint8Array(payload.encryptedData);
+    const encryptedData = base64ToUint8Array(validPayload.encryptedData);
     const computedChecksum = await computeChecksum(encryptedData);
 
-    if (computedChecksum !== payload.checksum) {
+    if (computedChecksum !== validPayload.checksum) {
       return { isValid: false, error: 'Backup checksum verification failed' };
     }
 
-    return { isValid: true, version: payload.version };
+    return { isValid: true, version: validPayload.version };
   }
 
   async exportBackupToFile(payload: BackupPayloadV1): Promise<string> {
@@ -239,7 +240,11 @@ export class BackupService {
     }
   }
 
-  private async getWalletData(): Promise<any> {
+  private async getWalletData(): Promise<{
+    publicKey: string;
+    privateKeyBundle: string;
+    metadata: { createdAt: number; version: string };
+  }> {
     // This would integrate with walletService to get the current wallet data
     // For now, return mock data
     return {
@@ -252,7 +257,7 @@ export class BackupService {
     };
   }
 
-  private async restoreWalletData(walletData: any): Promise<void> {
+  private async restoreWalletData(walletData: unknown): Promise<void> {
     // This would integrate with walletService to restore the wallet
     // For now, just log
     console.log('Restoring wallet data:', walletData);
@@ -267,7 +272,7 @@ export class BackupService {
   /**
    * Create backup (alias for createLocalBackup + uploadBackupToCloud)
    */
-  async createBackup(keyMaterial: any): Promise<void> {
+  async createBackup(keyMaterial: unknown): Promise<void> {
     // For now, use a default passphrase derived from key material
     const passphrase = JSON.stringify(keyMaterial);
     const payload = await this.createLocalBackup(passphrase);
@@ -277,7 +282,7 @@ export class BackupService {
   /**
    * Update backup (alias for createBackup)
    */
-  async updateBackup(keyMaterial: any): Promise<void> {
+  async updateBackup(keyMaterial: unknown): Promise<void> {
     await this.createBackup(keyMaterial);
   }
 
@@ -292,7 +297,7 @@ export class BackupService {
   /**
    * Restore backup (alias for downloadBackupFromCloud)
    */
-  async restoreBackup(): Promise<any> {
+  async restoreBackup(): Promise<BackupPayloadV1 | null> {
     const payload = await this.downloadBackupFromCloud();
     if (!payload) {
       throw new Error('No backup found');
