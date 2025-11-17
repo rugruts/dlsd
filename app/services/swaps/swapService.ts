@@ -30,35 +30,36 @@ export class SwapService {
     slippageBps: number = this.config.slippageBps
   ): Promise<SwapQuote> {
     try {
-      // TODO: Replace with actual Jupiter/TrashDEX API call
-      // const response = await fetch(`${this.config.aggregatorUrl}/quote`, {
-      //   method: 'GET',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     inputMint: inputMint.toBase58(),
-      //     outputMint: outputMint.toBase58(),
-      //     amount: amount.toString(),
-      //     slippageBps,
-      //   }),
-      // });
+      // Use Jupiter API v6 for quotes
+      const queryParams = new URLSearchParams({
+        inputMint: inputMint.toBase58(),
+        outputMint: outputMint.toBase58(),
+        amount: amount.toString(),
+        slippageBps: slippageBps.toString(),
+        swapMode: 'ExactIn',
+        onlyDirectRoutes: 'false',
+      });
 
-      // Mock response for now
-      const mockOutputAmount = amount * BigInt(95) / BigInt(100); // 5% slippage mock
-      const mockMinOutputAmount = mockOutputAmount * BigInt(100 - slippageBps) / BigInt(100);
+      const response = await fetch(`${this.config.aggregatorUrl}/v6/quote?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Jupiter API error: ${response.status}`);
+      }
+
+      const data = await response.json();
 
       return {
         inputMint: inputMint.toBase58(),
         outputMint: outputMint.toBase58(),
-        inputAmount: amount,
-        outputAmount: mockOutputAmount,
-        minOutputAmount: mockMinOutputAmount,
-        priceImpact: 0.02, // 2%
-        fee: BigInt(10000), // Mock fee
-        route: [{
-          programId: 'JUP4Fb2cQjt62kR4czcQVrRhEoKamBh1FJGsGMzDBEj',
-          accounts: [],
-          data: 'mock_route_data',
-        }],
+        inputAmount: BigInt(data.inAmount || amount),
+        outputAmount: BigInt(data.outAmount || 0),
+        minOutputAmount: BigInt(data.otherAmountThreshold || 0),
+        priceImpact: parseFloat(data.priceImpactPct || '0') / 100,
+        fee: BigInt(data.platformFee?.amount || 0),
+        route: data.routePlan || [],
       };
     } catch (error) {
       console.error('Error getting swap quote:', error);
@@ -68,22 +69,29 @@ export class SwapService {
 
   async buildSwapTransaction(quote: SwapQuote, walletPubkey: PublicKey): Promise<Transaction> {
     try {
-      // TODO: Replace with actual Jupiter/TrashDEX transaction building
-      // const response = await fetch(`${this.config.aggregatorUrl}/swap`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     quoteResponse: quote,
-      //     userPublicKey: walletPubkey.toBase58(),
-      //   }),
-      // });
+      // Use Jupiter API v6 to build swap transaction
+      const response = await fetch(`${this.config.aggregatorUrl}/v6/swap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quoteResponse: quote,
+          userPublicKey: walletPubkey.toBase58(),
+          wrapAndUnwrapSol: true,
+          computeUnitPriceMicroLamports: 'auto',
+        }),
+      });
 
-      // Mock transaction building
-      const tx = new Transaction();
-      // Add mock instructions here
-      // tx.add(...);
+      if (!response.ok) {
+        throw new Error(`Jupiter swap API error: ${response.status}`);
+      }
 
-      // Add recent blockhash
+      const data = await response.json();
+
+      // Deserialize the transaction
+      const txBuffer = Buffer.from(data.swapTransaction, 'base64');
+      const tx = Transaction.from(txBuffer);
+
+      // Update with latest blockhash
       const blockhash = await this.rpcClient.getLatestBlockhash();
       tx.recentBlockhash = blockhash;
       tx.feePayer = walletPubkey;
@@ -95,7 +103,7 @@ export class SwapService {
     }
   }
 
-  async simulateSwapTx(tx: Transaction): Promise<any> {
+  async simulateSwapTx(tx: Transaction): Promise<unknown> {
     return this.rpcClient.simulateTransaction(tx);
   }
 

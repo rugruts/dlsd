@@ -3,8 +3,8 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { appConfig } from '@dumpsack/shared-utils';
 import { TokenItem } from '../../types/wallet';
 import { tokenIcons } from '../../assets/tokens';
-
-const GOR_MINT = 'GOR111111111111111111111111111111111111111'; // Placeholder
+import { GOR_MINT, getTokenMetadata, fetchTokenMetadataOnChain } from './tokenRegistry';
+import { PriceService } from './priceService';
 
 export async function getWalletBalance(pubkey: PublicKey): Promise<{ lamports: number; uiAmount: number }> {
   const connection = new Connection(appConfig.rpc.primary, 'confirmed');
@@ -26,15 +26,28 @@ export async function getTokenAccounts(pubkey: PublicKey): Promise<any[]> {
   }
 }
 
-export async function getTokenMetadata(mint: string): Promise<{ symbol: string; name: string; decimals: number } | null> {
-  // For now, return hardcoded metadata for known tokens
-  const knownTokens: Record<string, { symbol: string; name: string; decimals: number }> = {
-    [GOR_MINT]: { symbol: 'GOR', name: 'Gorbagana', decimals: 9 },
-    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': { symbol: 'USDC', name: 'USD Coin', decimals: 6 },
-    'So11111111111111111111111111111111111111112': { symbol: 'SOL', name: 'Solana', decimals: 9 },
-  };
+export async function getTokenMetadataForMint(mint: string): Promise<{ symbol: string; name: string; decimals: number } | null> {
+  // First check token registry
+  const registryMetadata = getTokenMetadata(mint);
+  if (registryMetadata) {
+    return {
+      symbol: registryMetadata.symbol,
+      name: registryMetadata.name,
+      decimals: registryMetadata.decimals,
+    };
+  }
 
-  return knownTokens[mint] || null;
+  // Fallback: fetch from on-chain
+  const onChainMetadata = await fetchTokenMetadataOnChain(mint, appConfig.rpc.primary);
+  if (onChainMetadata) {
+    return {
+      symbol: onChainMetadata.symbol,
+      name: onChainMetadata.name,
+      decimals: onChainMetadata.decimals,
+    };
+  }
+
+  return null;
 }
 
 export async function getTokenList(pubkey: PublicKey): Promise<TokenItem[]> {
@@ -44,15 +57,16 @@ export async function getTokenList(pubkey: PublicKey): Promise<TokenItem[]> {
   ]);
 
   const tokens: TokenItem[] = [];
+  const symbolsForPricing: string[] = ['GOR'];
 
-  // Add native SOL/GOR balance
+  // Add native GOR balance
   tokens.push({
     mint: GOR_MINT,
     symbol: 'GOR',
     name: 'Gorbagana',
     balance: balanceResult.uiAmount,
     decimals: 9,
-    usdValue: balanceResult.uiAmount * 0.01, // Placeholder price
+    usdValue: 0, // Will be filled by price service
     icon: tokenIcons.GOR,
     address: pubkey.toBase58(),
   });
@@ -65,7 +79,7 @@ export async function getTokenList(pubkey: PublicKey): Promise<TokenItem[]> {
       const balance = parsedInfo.tokenAmount.uiAmount;
 
       if (balance > 0) {
-        const metadata = await getTokenMetadata(mint);
+        const metadata = await getTokenMetadataForMint(mint);
         if (metadata) {
           tokens.push({
             mint,
@@ -73,15 +87,29 @@ export async function getTokenList(pubkey: PublicKey): Promise<TokenItem[]> {
             name: metadata.name,
             balance,
             decimals: metadata.decimals,
-            usdValue: balance * 1.0, // Placeholder price calculation
+            usdValue: 0, // Will be filled by price service
             icon: tokenIcons[metadata.symbol as keyof typeof tokenIcons] || tokenIcons.default,
             address: account.pubkey.toBase58(),
           });
+          symbolsForPricing.push(metadata.symbol);
         }
       }
     } catch (error) {
       console.error('Error processing token account:', error);
     }
+  }
+
+  // Fetch real prices for all tokens
+  try {
+    const prices = await PriceService.getPrices(symbolsForPricing);
+    for (const token of tokens) {
+      const priceData = prices[token.symbol];
+      if (priceData) {
+        token.usdValue = token.balance * priceData.price;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch token prices:', error);
   }
 
   // Sort: GOR first, then by USD value descending
