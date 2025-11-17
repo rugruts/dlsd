@@ -1,4 +1,4 @@
-import { Connection, Transaction } from '@dumpsack/shared-utils/solana';
+import { Connection, Transaction } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
 
 export interface SimulationResult {

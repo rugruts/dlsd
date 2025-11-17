@@ -1,4 +1,4 @@
-import { PublicKey, Keypair, Transaction, SystemProgram } from '@dumpsack/shared-utils/solana';
+import { PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
 import { appConfig } from '@dumpsack/shared-utils';
 import { StakeTransactionContext } from './stakingTypes';
 

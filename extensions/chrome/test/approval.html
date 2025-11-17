@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DumpSack Approval Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #output {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 15px;
+      min-height: 200px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-y: auto;
+      max-height: 400px;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+  </style>
+</head>
+<body>
+  <h1>🗑️ DumpSack Wallet - Extension Approval Test</h1>
+  
+  <div class="status info" id="status">
+    Waiting for DumpSack extension...
+  </div>
+
+  <div class="button-group">
+    <button id="connect">🔗 Connect Wallet</button>
+    <button id="disconnect">❌ Disconnect</button>
+    <button id="sign">✍️ Sign Message</button>
+    <button id="signTx">📝 Sign Transaction</button>
+    <button id="getPublicKey">🔑 Get Public Key</button>
+    <button id="clear">🧹 Clear Output</button>
+  </div>
+
+  <h2>Output:</h2>
+  <pre id="output"></pre>
+
+  <script>
+    const output = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+      output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function setStatus(message, type = 'info') {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+    }
+
+    // Check if DumpSack is available
+    function checkDumpSack() {
+      if (window.dumpsack) {
+        log('DumpSack extension detected!', 'success');
+        setStatus('DumpSack extension is ready', 'success');
+        return true;
+      } else {
+        log('DumpSack extension not found. Please install and reload.', 'error');
+        setStatus('DumpSack extension not detected', 'error');
+        return false;
+      }
+    }
+
+    // Connect button
+    document.getElementById('connect').onclick = async () => {
+      if (!checkDumpSack()) return;
+      
+      try {
+        log('Requesting connection... (approval UI should appear)', 'info');
+        const result = await window.dumpsack.connect();
+        log('Connected successfully!', 'success');
+        log('Result: ' + JSON.stringify(result, null, 2), 'success');
+        setStatus('Connected to DumpSack', 'success');
+      } catch (error) {
+        log('Connection error: ' + error.message, 'error');
+        setStatus('Connection failed', 'error');
+      }
+    };
+
+    // Disconnect button
+    document.getElementById('disconnect').onclick = async () => {
+      if (!checkDumpSack()) return;
+      
+      try {
+        log('Disconnecting...', 'info');
+        await window.dumpsack.disconnect();
+        log('Disconnected successfully!', 'success');
+        setStatus('Disconnected from DumpSack', 'info');
+      } catch (error) {
+        log('Disconnect error: ' + error.message, 'error');
+      }
+    };
+
+    // Sign message button
+    document.getElementById('sign').onclick = async () => {
+      if (!checkDumpSack()) return;
+      
+      try {
+        const message = 'Hello DumpSack! This is a test message.';
+        log('Requesting signature for: "' + message + '"', 'info');
+        log('(approval UI should appear)', 'info');
+        
+        const encoder = new TextEncoder();
+        const messageBytes = encoder.encode(message);
+        
+        const signature = await window.dumpsack.signMessage(messageBytes);
+        log('Message signed successfully!', 'success');
+        log('Signature (hex): ' + Array.from(signature).map(b => b.toString(16).padStart(2, '0')).join(''), 'success');
+      } catch (error) {
+        log('Sign error: ' + error.message, 'error');
+      }
+    };
+
+    // Sign transaction button
+    document.getElementById('signTx').onclick = async () => {
+      if (!checkDumpSack()) return;
+      
+      try {
+        log('Requesting transaction signature...', 'info');
+        log('(approval UI should appear)', 'info');
+        log('Note: This requires a valid Solana transaction object', 'info');
+        
+        // This will likely fail without a real transaction, but tests the approval flow
+        await window.dumpsack.signTransaction({});
+      } catch (error) {
+        log('Sign transaction error: ' + error.message, 'error');
+      }
+    };
+
+    // Get public key button
+    document.getElementById('getPublicKey').onclick = async () => {
+      if (!checkDumpSack()) return;
+      
+      try {
+        if (window.dumpsack.publicKey) {
+          log('Public Key: ' + window.dumpsack.publicKey.toBase58(), 'success');
+        } else {
+          log('Not connected. Please connect first.', 'error');
+        }
+      } catch (error) {
+        log('Get public key error: ' + error.message, 'error');
+      }
+    };
+
+    // Clear output button
+    document.getElementById('clear').onclick = () => {
+      output.textContent = '';
+      log('Output cleared', 'info');
+    };
+
+    // Check on load
+    window.addEventListener('load', () => {
+      setTimeout(checkDumpSack, 500);
+    });
+
+    // Listen for DumpSack events
+    if (window.dumpsack) {
+      window.dumpsack.on('connect', (publicKey) => {
+        log('Event: Connected - ' + publicKey.toBase58(), 'success');
+      });
+
+      window.dumpsack.on('disconnect', () => {
+        log('Event: Disconnected', 'info');
+      });
+
+      window.dumpsack.on('accountChanged', (publicKey) => {
+        log('Event: Account changed - ' + (publicKey ? publicKey.toBase58() : 'null'), 'info');
+      });
+    }
+  </script>
+</body>
+</html>
+

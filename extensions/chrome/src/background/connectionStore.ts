@@ -1,4 +1,4 @@
-import { PublicKey } from '@dumpsack/shared-utils/solana';
+import { PublicKey } from '@dumpsack/shared-utils';
 import { ConnectionState } from './types';
 
 class ConnectionStore {

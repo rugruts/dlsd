@@ -1,4 +1,5 @@
-import { PublicKey, Keypair, Transaction, sendAndConfirmRawTransaction } from '@dumpsack/shared-utils/solana';
+import { PublicKey, Transaction, sendAndConfirmRawTransaction } from '@dumpsack/shared-utils';
+import { Keypair } from '@solana/web3.js';
 import { loadPrivateKey, savePrivateKey } from '../auth/secureStorage';
 import { BackupCrypto, PanicBunkerLockedError } from '@dumpsack/shared-utils';
 import { panicService } from '../panicService';

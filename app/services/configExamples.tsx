@@ -113,15 +113,20 @@ export function getApiEndpoint() {
   }
 }
 
-// Example: Firebase Config Usage
-import { firebaseConfig } from '../../packages/shared-utils';
+// Example: Supabase Config Usage
+import { getSupabase, SupabaseAuth } from '../../packages/shared-utils';
 
-export async function initializeFirebase() {
-  await firebaseConfig.initializeFirebase();
-  const db = await firebaseConfig.getFirestore();
-  const auth = await firebaseConfig.getAuth();
+export async function initializeSupabase() {
+  const supabase = getSupabase();
 
-  // Use db and auth...
+  // Sign in with Google
+  await SupabaseAuth.signInWithGoogle();
+
+  // Get current session
+  const session = await SupabaseAuth.getSession();
+
+  // Use supabase client for database queries
+  const { data, error } = await supabase.from('users').select('*');
 }
 
 // Example: Backup Service with Feature Flag

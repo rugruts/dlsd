@@ -15,8 +15,8 @@ export class BackgroundConfig {
     return appConfig.features[feature];
   }
 
-  getFirebaseConfig() {
-    return appConfig.firebase;
+  getSupabaseConfig() {
+    return appConfig.supabase;
   }
 }
 
@@ -187,11 +187,12 @@ export function getSettingsOptions() {
   ].filter(option => option.enabled);
 }
 
-// Example: Analytics Configuration
+// Example: Analytics Configuration (if needed in the future)
+// Note: No analytics currently configured
 export function getAnalyticsConfig() {
   return {
-    enabled: configManager.isProduction(),
-    trackingId: configManager.isProduction() ? 'GA_PROD_ID' : 'GA_DEV_ID',
+    enabled: false, // Analytics not currently implemented
+    trackingId: '',
   };
 }
 

@@ -1,4 +1,5 @@
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@dumpsack/shared-utils/solana';
+import { Connection, PublicKey } from '@dumpsack/shared-utils';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { appConfig } from '@dumpsack/shared-utils';
 import { TokenItem } from '../../types/wallet';
 import { tokenIcons } from '../../assets/tokens';

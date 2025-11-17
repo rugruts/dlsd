@@ -1,7 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '@dumpsack/shared-utils';
+import { getSupabase } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
 import { BackupCrypto } from '@dumpsack/shared-utils';
 import {
@@ -22,7 +21,6 @@ import {
 const BACKUP_VERSION = 1;
 
 export class BackupService {
-  private db = db;
 
   async createLocalBackup(passphrase: string): Promise<BackupPayloadV1> {
     if (!appConfig.features.enableBackup) {
@@ -40,12 +38,11 @@ export class BackupService {
     const dataString = JSON.stringify(walletData);
     const dataBytes = new TextEncoder().encode(dataString);
 
-    // Generate salt and IV
+    // Generate salt
     const salt = BackupCrypto.generateSalt();
-    const iv = crypto.getRandomValues(new Uint8Array(12)); // 96 bits for GCM
 
-    // Encrypt the data
-    const { encryptedData } = await BackupCrypto.encryptData(encryptionKey, dataBytes, iv);
+    // Encrypt the data (IV is generated automatically)
+    const { encryptedData, iv } = await BackupCrypto.encryptData(encryptionKey, dataBytes);
 
     // Convert to base64 for storage
     const encryptedDataB64 = uint8ArrayToBase64(encryptedData);
@@ -110,21 +107,35 @@ export class BackupService {
     }
 
     const userId = await this.getCurrentUserId();
-    const metadata: BackupMetadata = {
-      version: payload.version,
-      createdAt: payload.createdAt,
-      publicKey: payload.publicKey,
-      checksum: payload.checksum,
-    };
+    const supabase = getSupabase();
 
+    // Create the backup document
     const cloudDoc: CloudBackupDocument = {
       payload,
-      metadata,
+      metadata: {
+        version: payload.version,
+        createdAt: payload.createdAt,
+        publicKey: payload.publicKey,
+        checksum: payload.checksum,
+      },
       updatedAt: Date.now(),
     };
 
-    const docRef = doc(this.db, 'backups', userId);
-    await setDoc(docRef, cloudDoc);
+    // Upload to Supabase Storage bucket 'backups'
+    const filePath = `${userId}/backup.json`;
+    const jsonString = JSON.stringify(cloudDoc);
+
+    const { error } = await supabase.storage
+      .from('backups')
+      .upload(filePath, jsonString, {
+        upsert: true,
+        contentType: 'application/json',
+      });
+
+    if (error) {
+      console.error('Failed to upload backup to cloud:', error);
+      throw new Error('Failed to upload backup to cloud');
+    }
   }
 
   async downloadBackupFromCloud(): Promise<BackupPayloadV1 | null> {
@@ -133,15 +144,37 @@ export class BackupService {
     }
 
     const userId = await this.getCurrentUserId();
-    const docRef = doc(this.db, 'backups', userId);
-    const docSnap = await getDoc(docRef);
+    const supabase = getSupabase();
 
-    if (!docSnap.exists()) {
+    const filePath = `${userId}/backup.json`;
+
+    const { data, error } = await supabase.storage
+      .from('backups')
+      .download(filePath);
+
+    if (error) {
+      if (error.message.includes('not found')) {
+        return null; // No backup exists
+      }
+      console.error('Failed to download backup from cloud:', error);
+      throw new Error('Failed to download backup from cloud');
+    }
+
+    if (!data) {
       return null;
     }
 
-    const data = docSnap.data() as CloudBackupDocument;
-    return data.payload;
+    // Parse the JSON from the blob
+    // In React Native, Blob doesn't have .text() method, so we need to convert it
+    const reader = new FileReader();
+    const jsonString = await new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsText(data as Blob);
+    });
+    const cloudDoc: CloudBackupDocument = JSON.parse(jsonString);
+
+    return cloudDoc.payload;
   }
 
   async deleteCloudBackup(): Promise<void> {
@@ -150,8 +183,18 @@ export class BackupService {
     }
 
     const userId = await this.getCurrentUserId();
-    const docRef = doc(this.db, 'backups', userId);
-    await deleteDoc(docRef);
+    const supabase = getSupabase();
+
+    const filePath = `${userId}/backup.json`;
+
+    const { error } = await supabase.storage
+      .from('backups')
+      .remove([filePath]);
+
+    if (error) {
+      console.error('Failed to delete backup from cloud:', error);
+      throw new Error('Failed to delete backup from cloud');
+    }
   }
 
   async validateBackupIntegrity(payload: any): Promise<BackupValidationResult> {
@@ -180,7 +223,9 @@ export class BackupService {
 
   async exportBackupToFile(payload: BackupPayloadV1): Promise<string> {
     const filename = `dumpsack-backup-${payload.publicKey.slice(0, 8)}-${new Date(payload.createdAt).toISOString().split('T')[0]}.json`;
-    const fileUri = `${FileSystem.documentDirectory}${filename}`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const docDir = (FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '';
+    const fileUri = `${docDir}${filename}`;
 
     await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(payload, null, 2));
     return fileUri;
@@ -217,6 +262,50 @@ export class BackupService {
     // This would get the current user ID from auth store
     // For now, return a mock ID
     return 'mock-user-id';
+  }
+
+  /**
+   * Create backup (alias for createLocalBackup + uploadBackupToCloud)
+   */
+  async createBackup(keyMaterial: any): Promise<void> {
+    // For now, use a default passphrase derived from key material
+    const passphrase = JSON.stringify(keyMaterial);
+    const payload = await this.createLocalBackup(passphrase);
+    await this.uploadBackupToCloud(payload);
+  }
+
+  /**
+   * Update backup (alias for createBackup)
+   */
+  async updateBackup(keyMaterial: any): Promise<void> {
+    await this.createBackup(keyMaterial);
+  }
+
+  /**
+   * Check if backup exists
+   */
+  async hasBackup(): Promise<boolean> {
+    const payload = await this.downloadBackupFromCloud();
+    return payload !== null;
+  }
+
+  /**
+   * Restore backup (alias for downloadBackupFromCloud)
+   */
+  async restoreBackup(): Promise<any> {
+    const payload = await this.downloadBackupFromCloud();
+    if (!payload) {
+      throw new Error('No backup found');
+    }
+    // Return the payload as key material
+    return payload;
+  }
+
+  /**
+   * Delete backup (alias for deleteCloudBackup)
+   */
+  async deleteBackup(): Promise<void> {
+    await this.deleteCloudBackup();
   }
 }
 

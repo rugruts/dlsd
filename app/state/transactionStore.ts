@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { PublicKey } from '@dumpsack/shared-utils/solana';
+import { PublicKey } from '@dumpsack/shared-utils';
 import { useAuthStore } from './authStore';
-import { useWalletStore } from './walletStore';
+import { useWalletStore } from './walletStoreV2';
 import { buildSendGOR, buildSendSPL, estimateFees } from '../services/transactions/transactionBuilder';
 import { simulateTransaction } from '../services/transactions/transactionSimulator';
 import { sendAndConfirm } from '../services/transactions/transactionSender';
@@ -16,6 +16,8 @@ interface TransactionState {
 interface TransactionActions {
   sendGOR: (to: string, amount: number) => Promise<void>;
   sendToken: (to: string, token: TokenItem, amount: number) => Promise<void>;
+  addTransaction: (tx: { signature: string; type: string; amount: number; to: string }) => void;
+  updateTransactionStatus: (signature: string, status: string) => void;
   _setState: (state: Partial<TransactionState>) => void;
 }
 
@@ -117,6 +119,16 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
       });
       throw error;
     }
+  },
+
+  addTransaction: (tx) => {
+    // Store transaction in history (for now, just log)
+    console.log('Transaction added:', tx);
+  },
+
+  updateTransactionStatus: (signature, status) => {
+    // Update transaction status (for now, just log)
+    console.log('Transaction status updated:', signature, status);
   },
 
   _setState: (state) => set(state),

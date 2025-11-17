@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, SafeAreaView, FlatList, Image, TouchableOpacity } from 'react-native';
 import { useAppNavigation } from '../../navigation/hooks';
-import { useWalletStore } from '../../state/walletStore';
+import { useWalletStore } from '../../state/walletStoreV2';
 import { NftItem } from '../../types/wallet';
 
 export default function NFTGalleryScreen() {

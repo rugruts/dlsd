@@ -3,6 +3,9 @@ export interface Wallet {
   balance: number;
 }
 
+// Multi-wallet types
+export * from './wallet';
+
 export interface FeeEstimate {
   lamports: bigint;
   gor: number;
@@ -125,7 +128,8 @@ export interface BackupKeyMaterial {
   // Add other wallet-specific data as needed
 }
 
-export interface FirestoreBackupDocument {
+// Cloud backup document stored in Supabase Storage
+export interface CloudBackupDocument {
   userId: string;
   encryptedBackup: string;
   updatedAt: Date;

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { PublicKey } from '@dumpsack/shared-utils/solana';
+import { PublicKey } from '@dumpsack/shared-utils';
 import { useAuthStore } from './authStore';
-import { useWalletStore } from './walletStore';
+import { useWalletStore } from './walletStoreV2';
 import { getValidators } from '../services/staking/validatorService';
 import { getStakeOverview } from '../services/staking/stakeAccountService';
 import {

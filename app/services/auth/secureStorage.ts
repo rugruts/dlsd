@@ -88,3 +88,46 @@ export async function clearAllSecureData(): Promise<void> {
     clearUserId(),
   ]);
 }
+
+/**
+ * SecureStorage class wrapper for compatibility
+ */
+export class SecureStorage {
+  /**
+   * Store a secure item
+   */
+  static async storeSecureItem(key: string, value: string): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(key, value, {
+        keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+      });
+    } catch (error) {
+      console.error(`Failed to store secure item ${key}:`, error);
+      throw new Error('Failed to securely store item');
+    }
+  }
+
+  /**
+   * Get a secure item
+   */
+  static async getSecureItem(key: string): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch (error) {
+      console.error(`Failed to get secure item ${key}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete a secure item
+   */
+  static async deleteSecureItem(key: string): Promise<void> {
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch (error) {
+      console.error(`Failed to delete secure item ${key}:`, error);
+      // Don't throw here as it's cleanup
+    }
+  }
+}

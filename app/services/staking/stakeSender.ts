@@ -1,7 +1,7 @@
-import { Transaction } from '@dumpsack/shared-utils/solana';
+import { Transaction } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
 import { StakeTransactionContext } from './stakingTypes';
-import { signTransaction } from '../wallet/walletService';
+import { walletService } from '../wallet/walletService';
 
 export async function sendAndConfirmStake(
   transaction: Transaction,
@@ -13,7 +13,7 @@ export async function sendAndConfirmStake(
 
   try {
     // Sign the transaction
-    const signedTransaction = await signTransaction(transaction);
+    const signedTransaction = await walletService.signTransaction(transaction);
 
     // Serialize and send
     const serialized = signedTransaction.serialize();

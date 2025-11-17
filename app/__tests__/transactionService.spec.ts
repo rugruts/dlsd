@@ -2,7 +2,7 @@
  * Minimal test for transaction builder shapes.
  * Uses lightweight mocks — adjust if your actual service path differs.
  */
-import { PublicKey, Transaction, SystemProgram } from '@dumpsack/shared-utils/solana';
+import { PublicKey, Transaction, SystemProgram } from '@dumpsack/shared-utils';
 
 describe('transaction builder', () => {
   it('creates a basic transfer instruction', () => {

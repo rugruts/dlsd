@@ -1,5 +1,4 @@
-import { appConfig } from '@dumpsack/shared-utils';
-import { checkRpcHealth, RpcHealth } from '@dumpsack/shared-utils/health';
+import { appConfig, checkRpcHealth, type RpcHealth } from '@dumpsack/shared-utils';
 
 export async function getAppHealth(): Promise<{
   rpc: RpcHealth;

@@ -1,5 +1,4 @@
-import { appConfig } from '@dumpsack/shared-utils';
-import { checkRpcHealth } from '@dumpsack/shared-utils/health';
+import { appConfig, checkRpcHealth } from '@dumpsack/shared-utils';
 
 export async function extensionHealth() {
   const rpc = await checkRpcHealth(appConfig.rpc.primary);

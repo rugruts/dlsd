@@ -3,14 +3,18 @@
  */
 import { isAliasAvailable, registerAlias, resolveAlias } from '../services/auth/aliasService';
 
-// Mock Firebase
+// Mock Supabase
 jest.mock('@dumpsack/shared-utils', () => ({
-  firebaseConfig: {
-    getFirestore: jest.fn(() => ({
-      collection: jest.fn(),
-      doc: jest.fn(),
+  getSupabase: jest.fn(() => ({
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          maybeSingle: jest.fn(),
+        })),
+      })),
+      insert: jest.fn(),
     })),
-  },
+  })),
 }));
 
 describe('alias service', () => {
@@ -20,39 +24,37 @@ describe('alias service', () => {
 
   describe('isAliasAvailable', () => {
     it('returns true for available alias', async () => {
-      // Mock empty query result
-      const mockQuery = jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-      });
-
-      const mockGetDocs = jest.fn().mockResolvedValue({
-        empty: true,
-      });
-
-      // Mock Firestore calls
-      const { firebaseConfig } = require('@dumpsack/shared-utils');
-      const mockDb = {};
-      firebaseConfig.getFirestore.mockReturnValue(mockDb);
-      mockDb.collection = jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-      });
-      mockDb.where = jest.fn().mockReturnThis();
-      mockDb.get = jest.fn().mockResolvedValue({ empty: true });
+      const { getSupabase } = require('@dumpsack/shared-utils');
+      const mockSupabase = {
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+            })),
+          })),
+        })),
+      };
+      getSupabase.mockReturnValue(mockSupabase);
 
       const result = await isAliasAvailable('newalias');
       expect(result).toBe(true);
     });
 
     it('returns false for taken alias', async () => {
-      // Mock non-empty query result
-      const { firebaseConfig } = require('@dumpsack/shared-utils');
-      const mockDb = {};
-      firebaseConfig.getFirestore.mockReturnValue(mockDb);
-      mockDb.collection = jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-      });
-      mockDb.where = jest.fn().mockReturnThis();
-      mockDb.get = jest.fn().mockResolvedValue({ empty: false });
+      const { getSupabase } = require('@dumpsack/shared-utils');
+      const mockSupabase = {
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { alias: 'takenalias' },
+                error: null
+              }),
+            })),
+          })),
+        })),
+      };
+      getSupabase.mockReturnValue(mockSupabase);
 
       const result = await isAliasAvailable('takenalias');
       expect(result).toBe(false);
@@ -65,20 +67,18 @@ describe('alias service', () => {
       const address = 'GorbaganaAddress123';
       const userId = 'user123';
 
-      // Mock availability check
-      const { firebaseConfig } = require('@dumpsack/shared-utils');
-      const mockDb = {};
-      firebaseConfig.getFirestore.mockReturnValue(mockDb);
-
-      // Mock collection and doc calls
-      mockDb.collection = jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-      });
-      mockDb.where = jest.fn().mockReturnThis();
-      mockDb.get = jest.fn().mockResolvedValue({ empty: true });
-
-      mockDb.doc = jest.fn().mockReturnValue({});
-      mockDb.setDoc = jest.fn().mockResolvedValue(undefined);
+      const { getSupabase } = require('@dumpsack/shared-utils');
+      const mockSupabase = {
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+            })),
+          })),
+          insert: jest.fn().mockResolvedValue({ error: null }),
+        })),
+      };
+      getSupabase.mockReturnValue(mockSupabase);
 
       await expect(registerAlias(alias, address, userId)).resolves.not.toThrow();
     });
@@ -86,16 +86,20 @@ describe('alias service', () => {
     it('throws error for taken alias', async () => {
       const alias = 'takenalias';
 
-      // Mock availability check returning false
-      const { firebaseConfig } = require('@dumpsack/shared-utils');
-      const mockDb = {};
-      firebaseConfig.getFirestore.mockReturnValue(mockDb);
-
-      mockDb.collection = jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-      });
-      mockDb.where = jest.fn().mockReturnThis();
-      mockDb.get = jest.fn().mockResolvedValue({ empty: false });
+      const { getSupabase } = require('@dumpsack/shared-utils');
+      const mockSupabase = {
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { alias: 'takenalias' },
+                error: null
+              }),
+            })),
+          })),
+        })),
+      };
+      getSupabase.mockReturnValue(mockSupabase);
 
       await expect(registerAlias(alias, 'address', 'user')).rejects.toThrow('Alias is already taken');
     });
@@ -106,29 +110,37 @@ describe('alias service', () => {
       const alias = 'existing';
       const expectedAddress = 'ResolvedAddress123';
 
-      const { firebaseConfig } = require('@dumpsack/shared-utils');
-      const mockDb = {};
-      firebaseConfig.getFirestore.mockReturnValue(mockDb);
-
-      mockDb.doc = jest.fn().mockReturnValue({});
-      mockDb.getDoc = jest.fn().mockResolvedValue({
-        exists: () => true,
-        data: () => ({ address: expectedAddress }),
-      });
+      const { getSupabase } = require('@dumpsack/shared-utils');
+      const mockSupabase = {
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { address: expectedAddress },
+                error: null
+              }),
+            })),
+          })),
+        })),
+      };
+      getSupabase.mockReturnValue(mockSupabase);
 
       const result = await resolveAlias(alias);
       expect(result).toBe(expectedAddress);
     });
 
     it('returns null for non-existing alias', async () => {
-      const { firebaseConfig } = require('@dumpsack/shared-utils');
-      const mockDb = {};
-      firebaseConfig.getFirestore.mockReturnValue(mockDb);
-
-      mockDb.doc = jest.fn().mockReturnValue({});
-      mockDb.getDoc = jest.fn().mockResolvedValue({
-        exists: () => false,
-      });
+      const { getSupabase } = require('@dumpsack/shared-utils');
+      const mockSupabase = {
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+            })),
+          })),
+        })),
+      };
+      getSupabase.mockReturnValue(mockSupabase);
 
       const result = await resolveAlias('nonexisting');
       expect(result).toBe(null);

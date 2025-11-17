@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "DumpSack Wallet",
+  "version": "1.0.0",
+  "description": "Native wallet for Gorbagana blockchain",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://*/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "DumpSack Wallet"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["provider.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { Transaction } from '@dumpsack/shared-utils/solana';
+import { Transaction } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
 import { StakeSimulationResult } from './stakingTypes';
 

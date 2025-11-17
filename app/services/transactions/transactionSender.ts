@@ -1,6 +1,6 @@
-import { Connection, Transaction } from '@dumpsack/shared-utils/solana';
+import { Connection, Transaction } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
-import { signTransaction } from '../wallet/walletService';
+import { walletService } from '../wallet/walletService';
 
 export interface SendContext {
   blockhash: string;
@@ -14,7 +14,7 @@ export async function sendAndConfirm(
   const connection = new Connection(appConfig.rpc.primary, 'confirmed');
 
   // Sign the transaction
-  const signedTransaction = await signTransaction(transaction);
+  const signedTransaction = await walletService.signTransaction(transaction);
 
   // Serialize for sending
   const rawTransaction = signedTransaction.serialize();

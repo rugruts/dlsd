@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, TextInput, Alert } from 'react-native';
+import { View, Text, SafeAreaView, TextInput, Alert, TouchableOpacity } from 'react-native';
 import { useAppNavigation, useAppRoute } from '../../navigation/hooks';
 import { useStakingStore } from '../../state/stakingStore';
-import { useWalletStore } from '../../state/walletStore';
+import { useWalletStore } from '../../state/walletStoreV2';
 import { Button } from '../../components/Button';
 import { gorToLamports, isValidPublicKey } from '../../utils/stake';
 
@@ -30,7 +30,7 @@ export default function StakeActionScreen() {
   const handleMaxAmount = () => {
     if (mode === 'delegate') {
       // Leave some for fees
-      const maxAmount = Math.max(0, balance - 0.01); // 0.01 GOR for fees
+      const maxAmount = Math.max(0, (balance ?? 0) - 0.01); // 0.01 GOR for fees
       setAmount(maxAmount.toString());
     } else if (mode === 'withdraw') {
       const account = overview?.accounts.find(acc => acc.pubkey === selectedStakeAccount);
@@ -51,7 +51,7 @@ export default function StakeActionScreen() {
         Alert.alert('Error', 'Please enter a valid amount');
         return;
       }
-      if (gorToLamports(amount) > balance * 1e9) {
+      if (gorToLamports(amount) > (balance ?? 0) * 1e9) {
         Alert.alert('Error', 'Insufficient balance');
         return;
       }
@@ -115,7 +115,7 @@ export default function StakeActionScreen() {
           </TouchableOpacity>
         </View>
         <Text className="text-textSecondary text-sm mt-1">
-          Balance: {balance.toFixed(4)} GOR
+          Balance: {(balance ?? 0).toFixed(4)} GOR
         </Text>
       </View>
 

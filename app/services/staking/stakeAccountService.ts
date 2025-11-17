@@ -1,4 +1,4 @@
-import { PublicKey } from '@dumpsack/shared-utils/solana';
+import { PublicKey } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
 import { StakeAccountInfo, StakeOverview } from './stakingTypes';
 import { getEstimatedAPR } from './validatorService';

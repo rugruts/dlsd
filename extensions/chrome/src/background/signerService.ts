@@ -1,4 +1,4 @@
-import { Transaction, PublicKey } from '@dumpsack/shared-utils/solana';
+import { Transaction, PublicKey } from '@dumpsack/shared-utils';
 
 export class SignerService {
   private publicKey: PublicKey | null = null;

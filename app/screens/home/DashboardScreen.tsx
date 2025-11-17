@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useAppNavigation } from '../../navigation/hooks';
 import { useAuthStore } from '../../state/authStore';
-import { useWalletStore } from '../../state/walletStore';
+import { useWalletStore } from '../../state/walletStoreV2';
 import { Button } from '../../components/Button';
 import { TokenItem, NftItem } from '../../types/wallet';
 

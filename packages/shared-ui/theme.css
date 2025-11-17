@@ -1,0 +1,177 @@
+/**
+ * DumpSack Wallet Global Theme CSS
+ * Dark, high-contrast memecoin aesthetic
+ * Sharp, thick outlines with trash punk attitude
+ */
+
+:root {
+  /* Brand Colors */
+  --ds-bg: #0E3B2E;
+  --ds-surface: #124A38;
+  --ds-card: #124A38;
+  --ds-border: #0A2C22;
+  --ds-green: #1F6F2E;
+  --ds-orange: #FF6A1E;
+  --ds-text: #F3EFD8;
+  --ds-text-secondary: #B8B5A0;
+  --ds-text-muted: #7A7866;
+  --ds-primary: #FF6A1E;
+  --ds-secondary: #1F6F2E;
+  --ds-success: #2ECC71;
+  --ds-warning: #F39C12;
+  --ds-error: #E74C3C;
+  --ds-info: #3498DB;
+  
+  /* Spacing */
+  --ds-spacing-xs: 4px;
+  --ds-spacing-sm: 8px;
+  --ds-spacing-md: 16px;
+  --ds-spacing-lg: 24px;
+  --ds-spacing-xl: 32px;
+  --ds-spacing-xxl: 48px;
+  
+  /* Border Radius */
+  --ds-radius-sm: 8px;
+  --ds-radius-md: 14px;
+  --ds-radius-lg: 18px;
+  --ds-radius-xl: 24px;
+  
+  /* Border Width */
+  --ds-border-thin: 1px;
+  --ds-border-normal: 2px;
+  --ds-border-thick: 3px;
+  --ds-border-heavy: 4px;
+  
+  /* Typography */
+  --ds-font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ds-font-mono: Menlo, Monaco, "Courier New", monospace;
+  
+  /* Shadows */
+  --ds-shadow-sm: 0 1px 2px 0 rgba(5, 5, 5, 0.3);
+  --ds-shadow-md: 0 4px 6px -1px rgba(5, 5, 5, 0.4);
+  --ds-shadow-lg: 0 10px 15px -3px rgba(5, 5, 5, 0.5);
+  --ds-shadow-xl: 0 20px 25px -5px rgba(5, 5, 5, 0.6);
+}
+
+/* Global Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--ds-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--ds-bg);
+  color: var(--ds-text);
+}
+
+#root,
+#approval-root {
+  width: 100%;
+  height: 100%;
+  background-color: var(--ds-bg);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ds-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ds-green);
+  border-radius: var(--ds-radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ds-orange);
+}
+
+/* Button Hover States */
+.ds-button-primary:hover:not(:disabled) {
+  background-color: #E65A0E;
+  border-color: #E65A0E;
+}
+
+.ds-button-primary:active:not(:disabled) {
+  background-color: #CC4F08;
+  border-color: #CC4F08;
+}
+
+.ds-button-secondary:hover:not(:disabled) {
+  background-color: #2A8F3E;
+}
+
+.ds-button-secondary:active:not(:disabled) {
+  background-color: #165020;
+}
+
+.ds-button-danger:hover:not(:disabled) {
+  background-color: #C0392B;
+  border-color: #C0392B;
+}
+
+.ds-button-ghost:hover:not(:disabled) {
+  background-color: var(--ds-surface);
+}
+
+/* Card Hover States */
+.ds-card-hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ds-shadow-lg);
+  border-color: var(--ds-orange);
+}
+
+/* Input Focus States */
+.ds-input:focus {
+  border-color: var(--ds-orange);
+  outline: none;
+}
+
+.ds-input::placeholder {
+  color: var(--ds-text-muted);
+}
+
+/* Utility Classes */
+.ds-text-center {
+  text-align: center;
+}
+
+.ds-flex {
+  display: flex;
+}
+
+.ds-flex-col {
+  flex-direction: column;
+}
+
+.ds-items-center {
+  align-items: center;
+}
+
+.ds-justify-center {
+  justify-content: center;
+}
+
+.ds-gap-sm {
+  gap: var(--ds-spacing-sm);
+}
+
+.ds-gap-md {
+  gap: var(--ds-spacing-md);
+}
+
+.ds-gap-lg {
+  gap: var(--ds-spacing-lg);
+}
+

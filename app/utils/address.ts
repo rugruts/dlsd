@@ -1,4 +1,4 @@
-import { PublicKey } from '@dumpsack/shared-utils/solana';
+import { PublicKey } from '@dumpsack/shared-utils';
 import { resolveAlias } from '../services/auth/aliasService';
 
 export function shortAddress(pubkey: PublicKey | string): string {

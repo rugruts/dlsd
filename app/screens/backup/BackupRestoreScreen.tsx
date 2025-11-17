@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, TextInput, Alert } from 'react-native';
+import { View, Text, SafeAreaView, TextInput, Alert, TouchableOpacity } from 'react-native';
 import { useAppNavigation } from '../../navigation/hooks';
 import { useBackupStore } from '../../state/backupStore';
 import { Button } from '../../components/Button';
@@ -20,8 +20,9 @@ export default function BackupRestoreScreen() {
         copyToCacheDirectory: true,
       });
 
-      if (result.type === 'success') {
-        setSelectedFile(result.uri);
+      // Check if the result is not canceled
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedFile(result.assets[0].uri);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to select backup file');

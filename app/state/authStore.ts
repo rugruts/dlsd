@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { SolanaDerive } from '@dumpsack/shared-utils';
+import { useWalletStore } from './walletStoreV2';
+
 export type AuthProvider = 'google' | 'apple' | 'x' | 'mnemonic';
 
 interface AuthState {
@@ -25,20 +28,27 @@ type AuthStore = AuthState & AuthActions;
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // Initial state
       hasWallet: false,
       isAuthenticated: false,
 
       signInWithProvider: async (provider) => {
         // TODO: Implement OAuth flow with zkLogin
-        // For now, simulate successful auth
+        // For now, simulate successful auth and create a wallet
         const mockUserId = `user_${Date.now()}`;
-        const mockPublicKey = `mock_pubkey_${mockUserId}`;
+
+        // Generate a new mnemonic and create wallet in walletStoreV2
+        const mnemonic = SolanaDerive.generateMnemonic(128); // 12 words
+        await useWalletStore.getState().importFromMnemonic(mnemonic);
+
+        // Get the public key from the newly created wallet
+        const wallets = useWalletStore.getState().wallets;
+        const publicKey = wallets[0]?.publicKey || '';
 
         set({
           userId: mockUserId,
-          publicKey: mockPublicKey,
+          publicKey,
           hasWallet: true,
           isAuthenticated: false, // Not fully authenticated until alias is set
           authProvider: provider,
@@ -46,14 +56,17 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       importMnemonic: async (mnemonic) => {
-        // TODO: Validate and derive wallet from mnemonic
-        // For now, simulate successful import
+        // Import wallet from mnemonic into walletStoreV2
+        await useWalletStore.getState().importFromMnemonic(mnemonic);
+
+        // Get the public key from the imported wallet
+        const wallets = useWalletStore.getState().wallets;
+        const publicKey = wallets[0]?.publicKey || '';
         const mockUserId = `imported_${Date.now()}`;
-        const mockPublicKey = `imported_pubkey_${mockUserId}`;
 
         set({
           userId: mockUserId,
-          publicKey: mockPublicKey,
+          publicKey,
           hasWallet: true,
           isAuthenticated: false, // Not fully authenticated until alias is set
           authProvider: 'mnemonic',

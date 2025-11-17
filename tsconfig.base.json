@@ -3,11 +3,13 @@
     "target": "ES2022",
     "module": "ESNext",
     "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
       "@dumpsack/shared-utils": ["packages/shared-utils/index.ts"],
       "@dumpsack/shared-types": ["packages/shared-types/index.ts"],
+      "@dumpsack/shared-ui": ["packages/shared-ui/index.ts"],
       "@dumpsack/": ["packages/"]
     },
     "strict": true,

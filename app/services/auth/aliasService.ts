@@ -1,5 +1,4 @@
-import { doc, setDoc, getDoc, query, where, collection, getDocs } from 'firebase/firestore';
-import { firebaseConfig } from '@dumpsack/shared-utils';
+import { getSupabase } from '@dumpsack/shared-utils';
 
 export interface AliasRecord {
   alias: string;
@@ -8,17 +7,24 @@ export interface AliasRecord {
   createdAt: Date;
 }
 
-const ALIASES_COLLECTION = 'userAliases';
-
 /**
  * Check if an alias is available
  */
 export async function isAliasAvailable(alias: string): Promise<boolean> {
   try {
-    const db = await firebaseConfig.getFirestore();
-    const q = query(collection(db, ALIASES_COLLECTION), where('alias', '==', alias));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.empty;
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('aliases')
+      .select('alias')
+      .eq('alias', alias)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Failed to check alias availability:', error);
+      throw new Error('Failed to check alias availability');
+    }
+
+    return !data; // Available if no data found
   } catch (error) {
     console.error('Failed to check alias availability:', error);
     throw new Error('Failed to check alias availability');
@@ -36,15 +42,19 @@ export async function registerAlias(alias: string, address: string, userId: stri
       throw new Error('Alias is already taken');
     }
 
-    const db = await firebaseConfig.getFirestore();
-    const aliasDoc: AliasRecord = {
-      alias,
-      address,
-      userId,
-      createdAt: new Date(),
-    };
+    const supabase = getSupabase();
+    const { error } = await supabase
+      .from('aliases')
+      .insert({
+        alias,
+        address,
+        owner_uid: userId,
+      });
 
-    await setDoc(doc(db, ALIASES_COLLECTION, alias), aliasDoc);
+    if (error) {
+      console.error('Failed to register alias:', error);
+      throw new Error('Failed to register alias');
+    }
   } catch (error) {
     console.error('Failed to register alias:', error);
     throw error;
@@ -56,16 +66,19 @@ export async function registerAlias(alias: string, address: string, userId: stri
  */
 export async function resolveAlias(alias: string): Promise<string | null> {
   try {
-    const db = await firebaseConfig.getFirestore();
-    const docRef = doc(db, ALIASES_COLLECTION, alias);
-    const docSnap = await getDoc(docRef);
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('aliases')
+      .select('address')
+      .eq('alias', alias)
+      .maybeSingle();
 
-    if (docSnap.exists()) {
-      const data = docSnap.data() as AliasRecord;
-      return data.address;
+    if (error) {
+      console.error('Failed to resolve alias:', error);
+      throw new Error('Failed to resolve alias');
     }
 
-    return null;
+    return data?.address || null;
   } catch (error) {
     console.error('Failed to resolve alias:', error);
     throw new Error('Failed to resolve alias');
@@ -77,16 +90,28 @@ export async function resolveAlias(alias: string): Promise<string | null> {
  */
 export async function getAliasByUserId(userId: string): Promise<AliasRecord | null> {
   try {
-    const db = await firebaseConfig.getFirestore();
-    const q = query(collection(db, ALIASES_COLLECTION), where('userId', '==', userId));
-    const querySnapshot = await getDocs(q);
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('aliases')
+      .select('*')
+      .eq('owner_uid', userId)
+      .maybeSingle();
 
-    if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      return doc.data() as AliasRecord;
+    if (error) {
+      console.error('Failed to get alias by user ID:', error);
+      throw new Error('Failed to get user alias');
     }
 
-    return null;
+    if (!data) {
+      return null;
+    }
+
+    return {
+      alias: data.alias,
+      address: data.address,
+      userId: data.owner_uid,
+      createdAt: new Date(data.created_at),
+    };
   } catch (error) {
     console.error('Failed to get alias by user ID:', error);
     throw new Error('Failed to get user alias');

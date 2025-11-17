@@ -1,16 +1,7 @@
-import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
-import { firebaseConfig } from '../../../packages/shared-utils';
+import { getSupabase } from '../../../packages/shared-utils';
 import { ThroneLink, ThroneLinkPayload } from '../../../packages/shared-types';
 
 export class ThroneLinkService {
-  private db: any = null;
-
-  private async ensureInitialized() {
-    if (!this.db) {
-      this.db = await firebaseConfig.getFirestore();
-    }
-  }
-
   /**
    * Create a new throne link
    */
@@ -20,24 +11,28 @@ export class ThroneLinkService {
     payload: ThroneLinkPayload,
     expiresInHours: number = 24
   ): Promise<string> {
-    await this.ensureInitialized();
-
     try {
+      const supabase = getSupabase();
       const id = this.generateThroneLinkId();
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + expiresInHours);
 
-      const throneLink: Omit<ThroneLink, 'id'> = {
-        ownerUserId,
-        type,
-        payload,
-        createdAt: new Date(),
-        expiresAt,
-        used: false,
-      };
+      const { error } = await supabase
+        .from('throne_links')
+        .insert({
+          id,
+          owner_user_id: ownerUserId,
+          type,
+          payload,
+          created_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+          used: false,
+        });
 
-      const docRef = doc(this.db, 'throneLinks', id);
-      await setDoc(docRef, throneLink);
+      if (error) {
+        console.error('Failed to create throne link:', error);
+        throw new Error('Failed to create throne link');
+      }
 
       return id;
     } catch (error) {
@@ -50,26 +45,33 @@ export class ThroneLinkService {
    * Get throne link by ID
    */
   async getThroneLink(id: string): Promise<ThroneLink | null> {
-    await this.ensureInitialized();
-
     try {
-      const docRef = doc(this.db, 'throneLinks', id);
-      const docSnap = await getDoc(docRef);
+      const supabase = getSupabase();
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        return {
-          id,
-          ownerUserId: data.ownerUserId,
-          type: data.type,
-          payload: data.payload,
-          createdAt: data.createdAt.toDate(),
-          expiresAt: data.expiresAt.toDate(),
-          used: data.used || false,
-        };
+      const { data, error } = await supabase
+        .from('throne_links')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Failed to get throne link:', error);
+        throw new Error('Failed to fetch throne link');
       }
 
-      return null;
+      if (!data) {
+        return null;
+      }
+
+      return {
+        id: data.id,
+        ownerUserId: data.owner_user_id,
+        type: data.type,
+        payload: data.payload,
+        createdAt: new Date(data.created_at),
+        expiresAt: new Date(data.expires_at),
+        used: data.used || false,
+      };
     } catch (error) {
       console.error('Failed to get throne link:', error);
       throw new Error('Failed to fetch throne link');
@@ -80,10 +82,8 @@ export class ThroneLinkService {
    * Mark throne link as used
    */
   async markThroneLinkUsed(id: string, userId: string): Promise<void> {
-    await this.ensureInitialized();
-
     try {
-      const docRef = doc(this.db, 'throneLinks', id);
+      const supabase = getSupabase();
       const throneLink = await this.getThroneLink(id);
 
       if (!throneLink) {
@@ -101,12 +101,18 @@ export class ThroneLinkService {
       // TODO: Add validation that userId is authorized to use this link
       // This might involve checking if the user is the intended recipient
 
-      await updateDoc(docRef, {
-        used: true,
-        usedBy: userId,
-        usedAt: new Date(),
-      });
+      const { error } = await supabase
+        .from('throne_links')
+        .update({
+          used: true,
+          // Note: Add used_by and used_at columns to the schema if needed
+        })
+        .eq('id', id);
 
+      if (error) {
+        console.error('Failed to mark throne link as used:', error);
+        throw new Error('Failed to use throne link');
+      }
     } catch (error) {
       console.error('Failed to mark throne link as used:', error);
       throw new Error('Failed to use throne link');
@@ -117,31 +123,28 @@ export class ThroneLinkService {
    * Get throne links for a user (created by them)
    */
   async getUserThroneLinks(userId: string): Promise<ThroneLink[]> {
-    await this.ensureInitialized();
-
     try {
-      const q = query(
-        collection(this.db, 'throneLinks'),
-        where('ownerUserId', '==', userId)
-      );
+      const supabase = getSupabase();
 
-      const querySnapshot = await getDocs(q);
-      const throneLinks: ThroneLink[] = [];
+      const { data, error } = await supabase
+        .from('throne_links')
+        .select('*')
+        .eq('owner_user_id', userId);
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        throneLinks.push({
-          id: doc.id,
-          ownerUserId: data.ownerUserId,
-          type: data.type,
-          payload: data.payload,
-          createdAt: data.createdAt.toDate(),
-          expiresAt: data.expiresAt.toDate(),
-          used: data.used || false,
-        });
-      });
+      if (error) {
+        console.error('Failed to get user throne links:', error);
+        throw new Error('Failed to fetch throne links');
+      }
 
-      return throneLinks;
+      return (data || []).map((row) => ({
+        id: row.id,
+        ownerUserId: row.owner_user_id,
+        type: row.type,
+        payload: row.payload,
+        createdAt: new Date(row.created_at),
+        expiresAt: new Date(row.expires_at),
+        used: row.used || false,
+      }));
     } catch (error) {
       console.error('Failed to get user throne links:', error);
       throw new Error('Failed to fetch throne links');
@@ -152,31 +155,23 @@ export class ThroneLinkService {
    * Delete expired throne links (cleanup function)
    */
   async cleanupExpiredLinks(): Promise<number> {
-    await this.ensureInitialized();
-
     try {
-      const now = new Date();
-      const q = query(
-        collection(this.db, 'throneLinks'),
-        where('expiresAt', '<', now)
-      );
+      const supabase = getSupabase();
+      const now = new Date().toISOString();
 
-      const querySnapshot = await getDocs(q);
-      let deletedCount = 0;
+      // Supabase supports direct delete queries
+      const { data, error } = await supabase
+        .from('throne_links')
+        .delete()
+        .lt('expires_at', now)
+        .select('id');
 
-      // Note: Firestore doesn't support delete queries directly
-      // In production, you might want to use Cloud Functions for this
-      const deletePromises = querySnapshot.docs.map(async (document) => {
-        await updateDoc(document.ref, {
-          deleted: true,
-          deletedAt: new Date(),
-        });
-        deletedCount++;
-      });
+      if (error) {
+        console.error('Failed to cleanup expired links:', error);
+        throw new Error('Failed to cleanup links');
+      }
 
-      await Promise.all(deletePromises);
-      return deletedCount;
-
+      return data?.length || 0;
     } catch (error) {
       console.error('Failed to cleanup expired links:', error);
       throw new Error('Failed to cleanup links');

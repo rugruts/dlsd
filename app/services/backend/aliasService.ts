@@ -1,13 +1,30 @@
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { firebaseConfig } from '../../../packages/shared-utils';
+import { getSupabase } from '../../../packages/shared-utils';
 import { AliasDocument } from '../../../packages/shared-types';
 
 export class AliasService {
-  private db: any = null;
+  /**
+   * Check if alias is available
+   */
+  async isAliasAvailable(alias: string): Promise<boolean> {
+    try {
+      const cleanAlias = alias.startsWith('@') ? alias.slice(1) : alias;
+      const supabase = getSupabase();
 
-  private async ensureInitialized() {
-    if (!this.db) {
-      this.db = await firebaseConfig.getFirestore();
+      const { data, error } = await supabase
+        .from('aliases')
+        .select('alias')
+        .eq('alias', cleanAlias)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Failed to check alias availability:', error);
+        return false;
+      }
+
+      return !data; // Available if no data found
+    } catch (error) {
+      console.error('Failed to check alias availability:', error);
+      return false;
     }
   }
 
@@ -15,12 +32,12 @@ export class AliasService {
    * Register a new alias for a user
    */
   async registerAlias(alias: string, address: string, userId: string): Promise<void> {
-    await this.ensureInitialized();
-
     try {
+      const cleanAlias = alias.startsWith('@') ? alias.slice(1) : alias;
+
       // Check if alias is already taken
-      const existingAlias = await this.resolveAlias(alias);
-      if (existingAlias) {
+      const isAvailable = await this.isAliasAvailable(cleanAlias);
+      if (!isAvailable) {
         throw new Error('Alias already exists');
       }
 
@@ -30,20 +47,23 @@ export class AliasService {
         throw new Error('User already has an alias');
       }
 
-      // Create alias document
-      const aliasDoc: Omit<AliasDocument, 'alias'> = {
-        userId,
-        resolvedAddress: address,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const supabase = getSupabase();
 
-      const docRef = doc(this.db, 'aliases', alias);
-      await setDoc(docRef, aliasDoc);
+      const { error } = await supabase
+        .from('aliases')
+        .insert({
+          alias: cleanAlias,
+          address,
+          owner_uid: userId,
+        });
 
+      if (error) {
+        console.error('Failed to register alias:', error);
+        throw new Error('Failed to register alias');
+      }
     } catch (error) {
       console.error('Failed to register alias:', error);
-      throw new Error('Failed to register alias');
+      throw error instanceof Error ? error : new Error('Failed to register alias');
     }
   }
 
@@ -51,22 +71,25 @@ export class AliasService {
    * Resolve an alias to an address
    */
   async resolveAlias(alias: string): Promise<string | null> {
-    await this.ensureInitialized();
-
     try {
       const cleanAlias = alias.startsWith('@') ? alias.slice(1) : alias;
-      const docRef = doc(this.db, 'aliases', cleanAlias);
-      const docSnap = await getDoc(docRef);
+      const supabase = getSupabase();
 
-      if (docSnap.exists()) {
-        const data = docSnap.data() as AliasDocument;
-        return data.resolvedAddress;
+      const { data, error } = await supabase
+        .from('aliases')
+        .select('address')
+        .eq('alias', cleanAlias)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Failed to resolve alias:', error);
+        return null;
       }
 
-      return null;
+      return data?.address || null;
     } catch (error) {
       console.error('Failed to resolve alias:', error);
-      throw new Error('Failed to resolve alias');
+      return null;
     }
   }
 
@@ -74,28 +97,26 @@ export class AliasService {
    * Get all aliases for a user
    */
   async getUserAliases(userId: string): Promise<AliasDocument[]> {
-    await this.ensureInitialized();
-
     try {
-      const q = query(
-        collection(this.db, 'aliases'),
-        where('userId', '==', userId)
-      );
+      const supabase = getSupabase();
 
-      const querySnapshot = await getDocs(q);
-      const aliases: AliasDocument[] = [];
+      const { data, error } = await supabase
+        .from('aliases')
+        .select('*')
+        .eq('owner_uid', userId);
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data() as Omit<AliasDocument, 'alias'>;
-        aliases.push({
-          alias: doc.id,
-          ...data,
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-        });
-      });
+      if (error) {
+        console.error('Failed to get user aliases:', error);
+        throw new Error('Failed to fetch user aliases');
+      }
 
-      return aliases;
+      return (data || []).map((row) => ({
+        alias: row.alias,
+        userId: row.owner_uid,
+        resolvedAddress: row.address,
+        createdAt: new Date(row.created_at),
+        updatedAt: new Date(row.created_at), // Supabase doesn't have updated_at in the schema
+      }));
     } catch (error) {
       console.error('Failed to get user aliases:', error);
       throw new Error('Failed to fetch user aliases');
@@ -106,30 +127,38 @@ export class AliasService {
    * Update alias address (for when user changes wallet)
    */
   async updateAliasAddress(alias: string, newAddress: string, userId: string): Promise<void> {
-    await this.ensureInitialized();
-
     try {
-      const docRef = doc(this.db, 'aliases', alias);
-      const docSnap = await getDoc(docRef);
+      const cleanAlias = alias.startsWith('@') ? alias.slice(1) : alias;
+      const supabase = getSupabase();
 
-      if (!docSnap.exists()) {
+      // Verify ownership
+      const { data: existing, error: fetchError } = await supabase
+        .from('aliases')
+        .select('owner_uid')
+        .eq('alias', cleanAlias)
+        .maybeSingle();
+
+      if (fetchError || !existing) {
         throw new Error('Alias not found');
       }
 
-      const data = docSnap.data() as AliasDocument;
-      if (data.userId !== userId) {
+      if (existing.owner_uid !== userId) {
         throw new Error('Alias does not belong to user');
       }
 
-      await setDoc(docRef, {
-        ...data,
-        resolvedAddress: newAddress,
-        updatedAt: new Date(),
-      });
+      const { error } = await supabase
+        .from('aliases')
+        .update({ address: newAddress })
+        .eq('alias', cleanAlias)
+        .eq('owner_uid', userId);
 
+      if (error) {
+        console.error('Failed to update alias address:', error);
+        throw new Error('Failed to update alias');
+      }
     } catch (error) {
       console.error('Failed to update alias address:', error);
-      throw new Error('Failed to update alias');
+      throw error instanceof Error ? error : new Error('Failed to update alias');
     }
   }
 
@@ -137,50 +166,38 @@ export class AliasService {
    * Delete an alias
    */
   async deleteAlias(alias: string, userId: string): Promise<void> {
-    await this.ensureInitialized();
-
     try {
-      const docRef = doc(this.db, 'aliases', alias);
-      const docSnap = await getDoc(docRef);
+      const cleanAlias = alias.startsWith('@') ? alias.slice(1) : alias;
+      const supabase = getSupabase();
 
-      if (!docSnap.exists()) {
+      // Verify ownership
+      const { data: existing, error: fetchError } = await supabase
+        .from('aliases')
+        .select('owner_uid')
+        .eq('alias', cleanAlias)
+        .maybeSingle();
+
+      if (fetchError || !existing) {
         throw new Error('Alias not found');
       }
 
-      const data = docSnap.data() as AliasDocument;
-      if (data.userId !== userId) {
+      if (existing.owner_uid !== userId) {
         throw new Error('Alias does not belong to user');
       }
 
-      // Note: In Firestore, we can't directly delete - this is a soft delete
-      // In production, you might want to implement actual deletion or archiving
-      await setDoc(docRef, {
-        ...data,
-        resolvedAddress: '', // Clear the address
-        updatedAt: new Date(),
-      });
+      const { error } = await supabase
+        .from('aliases')
+        .delete()
+        .eq('alias', cleanAlias)
+        .eq('owner_uid', userId);
 
+      if (error) {
+        console.error('Failed to delete alias:', error);
+        throw new Error('Failed to delete alias');
+      }
     } catch (error) {
       console.error('Failed to delete alias:', error);
-      throw new Error('Failed to delete alias');
-    }
-  }
-
-  /**
-   * Check if alias is available
-   */
-  async isAliasAvailable(alias: string): Promise<boolean> {
-    await this.ensureInitialized();
-
-    try {
-      const cleanAlias = alias.startsWith('@') ? alias.slice(1) : alias;
-      const docRef = doc(this.db, 'aliases', cleanAlias);
-      const docSnap = await getDoc(docRef);
-
-      return !docSnap.exists();
-    } catch (error) {
-      console.error('Failed to check alias availability:', error);
-      return false;
+      throw error instanceof Error ? error : new Error('Failed to delete alias');
     }
   }
 
@@ -188,25 +205,22 @@ export class AliasService {
    * Search aliases (for autocomplete, etc.)
    */
   async searchAliases(searchTerm: string, limit: number = 10): Promise<string[]> {
-    await this.ensureInitialized();
-
     try {
-      // Note: Firestore doesn't support prefix search natively
-      // This is a simplified implementation - in production, consider Algolia or similar
-      const aliasesRef = collection(this.db, 'aliases');
-      const q = query(aliasesRef); // In production, add proper search indexing
+      const supabase = getSupabase();
 
-      const querySnapshot = await getDocs(q);
-      const matchingAliases: string[] = [];
+      // Use Postgres ILIKE for case-insensitive search
+      const { data, error } = await supabase
+        .from('aliases')
+        .select('alias')
+        .ilike('alias', `%${searchTerm}%`)
+        .limit(limit);
 
-      querySnapshot.forEach((doc) => {
-        const alias = doc.id;
-        if (alias.toLowerCase().includes(searchTerm.toLowerCase()) && matchingAliases.length < limit) {
-          matchingAliases.push(alias);
-        }
-      });
+      if (error) {
+        console.error('Failed to search aliases:', error);
+        return [];
+      }
 
-      return matchingAliases;
+      return (data || []).map((row) => row.alias);
     } catch (error) {
       console.error('Failed to search aliases:', error);
       return [];

@@ -39,15 +39,14 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      [
-        "expo-secure-store",
-        {
-          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID."
-        }
-      ]
-    ],
+    "plugins": [],
     "privacy": "public",
-    "primaryColor": "#ff6b35"
+    "primaryColor": "#ff6b35",
+    "extra": {
+      "eas": {
+        "projectId": "e4d669f2-9590-42a4-ad0f-4b948f42d709"
+      }
+    },
+    "owner": "theomatra"
   }
 }

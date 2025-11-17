@@ -1,21 +1,18 @@
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
-import { BackupCrypto } from '../../../../packages/shared-utils';
-import { WalletBackup, BackupKeyMaterial, FirestoreBackupDocument } from '../../../../packages/shared-types';
+import type { BackupKeyMaterial } from '../../../../packages/shared-types';
+import { BackupCrypto, getSupabase } from '../../../../packages/shared-utils';
 
-// TODO: Initialize Firebase app - this should be done once in the extension
-// const firebaseConfig = { ... };
-// const app = initializeApp(firebaseConfig);
-const db = getFirestore(); // Assume initialized elsewhere
-
+/**
+ * Extension Backup Service
+ *
+ * SECURITY: This service requires a user passphrase for all backup operations.
+ * No UID-derived secrets are used. The passphrase must be provided by the user
+ * for both backup creation and restoration.
+ */
 export class ExtensionBackupService {
   private userId: string;
-  private userSecret: string;
 
   constructor(userId: string) {
     this.userId = userId;
-    this.userSecret = BackupCrypto.generateUserSecret(userId);
   }
 
   /**
@@ -23,27 +20,52 @@ export class ExtensionBackupService {
    */
   async hasBackup(): Promise<boolean> {
     try {
-      const encryptedBackup = await this.fetchBackup();
-      return encryptedBackup !== null;
+      const backupPayload = await this.fetchBackup();
+      return backupPayload !== null;
     } catch {
       return false;
     }
   }
 
   /**
-   * Fetch encrypted backup from Firestore
+   * Fetch encrypted backup payload from Supabase Storage
+   * Returns the full backup payload with salt, IV, and encrypted data
    */
-  private async fetchBackup(): Promise<string | null> {
+  private async fetchBackup(): Promise<{
+    version: number;
+    createdAt: number;
+    publicKey: string;
+    encryptedData: string;
+    salt: string;
+    iv: string;
+    checksum: string;
+  } | null> {
     try {
-      const docRef = doc(db, 'userWalletBackups', this.userId);
-      const docSnap = await getDoc(docRef);
+      const supabase = getSupabase();
+      const filePath = `${this.userId}/backup.json`;
 
-      if (docSnap.exists()) {
-        const data = docSnap.data() as FirestoreBackupDocument;
-        return data.encryptedBackup;
+      const { data, error } = await supabase.storage
+        .from('backups')
+        .download(filePath);
+
+      if (error) {
+        if (error.message.includes('not found')) {
+          return null; // No backup exists
+        }
+        console.error('Failed to fetch backup:', error);
+        throw new Error('Backup fetch failed');
       }
 
-      return null;
+      if (!data) {
+        return null;
+      }
+
+      // Parse the JSON from the blob
+      const jsonString = await data.text();
+      const backupDoc = JSON.parse(jsonString);
+
+      // Return the full payload (includes salt, iv, encryptedData, checksum)
+      return backupDoc.payload || null;
     } catch (error) {
       console.error('Failed to fetch backup:', error);
       throw new Error('Backup fetch failed');
@@ -52,27 +74,40 @@ export class ExtensionBackupService {
 
   /**
    * Decrypt and restore backup for extension initialization
+   *
+   * @param passphrase - User passphrase for decryption (REQUIRED)
+   * @returns Decrypted backup key material
+   * @throws Error if passphrase is wrong or backup is corrupted
    */
-  async restoreBackup(): Promise<BackupKeyMaterial> {
+  async restoreBackup(passphrase: string): Promise<BackupKeyMaterial> {
+    if (!passphrase) {
+      throw new Error('Passphrase is required for backup restoration');
+    }
+
     try {
-      const encryptedBackup = await this.fetchBackup();
-      if (!encryptedBackup) {
+      const backupPayload = await this.fetchBackup();
+      if (!backupPayload) {
         throw new Error('No backup found');
       }
 
-      // Decode from base64
-      const combinedData = BackupCrypto.base64ToUint8Array(encryptedBackup);
+      // Extract components from payload
+      const salt = BackupCrypto.base64ToUint8Array(backupPayload.salt);
+      const iv = BackupCrypto.base64ToUint8Array(backupPayload.iv);
+      const encryptedData = BackupCrypto.base64ToUint8Array(backupPayload.encryptedData);
 
-      // Extract salt, iv, and encrypted data
-      const salt = combinedData.slice(0, 16); // 16 bytes salt
-      const iv = combinedData.slice(16, 28); // 12 bytes IV
-      const encryptedData = combinedData.slice(28);
-
-      // Derive decryption key
-      const decryptionKey = await BackupCrypto.deriveBackupKey(this.userSecret, salt);
+      // Derive decryption key from user passphrase
+      const decryptionKey = await BackupCrypto.deriveBackupKey(passphrase, salt);
 
       // Decrypt the data
       const decryptedBytes = await BackupCrypto.decryptData(decryptionKey, encryptedData, iv);
+
+      // Verify checksum if present
+      if (backupPayload.checksum) {
+        const computedChecksum = await this.computeChecksum(encryptedData);
+        if (computedChecksum !== backupPayload.checksum) {
+          throw new Error('Backup integrity check failed - data may be corrupted');
+        }
+      }
 
       // Parse JSON
       const keyDataString = new TextDecoder().decode(decryptedBytes);
@@ -81,16 +116,26 @@ export class ExtensionBackupService {
       return keyMaterial;
 
     } catch (error) {
+      if (error instanceof Error && error.message.includes('OperationError')) {
+        throw new Error('Wrong passphrase - decryption failed');
+      }
       console.error('Failed to restore backup:', error);
-      throw new Error('Backup restoration failed');
+      throw new Error('Backup restoration failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 
   /**
    * Upload backup from extension (sync changes back to cloud)
-   * This is typically called when extension wallet state changes
+   *
+   * @param keyMaterial - Wallet key material to backup
+   * @param passphrase - User passphrase for encryption (REQUIRED)
+   * @throws Error if passphrase is empty or upload fails
    */
-  async syncBackup(keyMaterial: BackupKeyMaterial): Promise<void> {
+  async syncBackup(keyMaterial: BackupKeyMaterial, passphrase: string): Promise<void> {
+    if (!passphrase) {
+      throw new Error('Passphrase is required for backup creation');
+    }
+
     try {
       // Serialize key material to JSON
       const keyData = JSON.stringify(keyMaterial);
@@ -99,36 +144,68 @@ export class ExtensionBackupService {
       // Generate salt for this backup
       const salt = BackupCrypto.generateSalt();
 
-      // Derive encryption key
-      const encryptionKey = await BackupCrypto.deriveBackupKey(this.userSecret, salt);
+      // Derive encryption key from user passphrase
+      const encryptionKey = await BackupCrypto.deriveBackupKey(passphrase, salt);
 
-      // Encrypt the data
+      // Encrypt the data (IV is generated automatically)
       const { encryptedData, iv } = await BackupCrypto.encryptData(encryptionKey, dataBytes);
 
-      // Combine salt + iv + encrypted data
-      const combinedData = new Uint8Array(salt.length + iv.length + encryptedData.length);
-      combinedData.set(salt, 0);
-      combinedData.set(iv, salt.length);
-      combinedData.set(encryptedData, salt.length + iv.length);
+      // Compute checksum
+      const checksum = await this.computeChecksum(encryptedData);
 
-      // Convert to base64 for storage
-      const encryptedBackup = BackupCrypto.uint8ArrayToBase64(combinedData);
-
-      // Update backup document
-      const backupDoc: Omit<FirestoreBackupDocument, 'userId'> = {
-        encryptedBackup,
-        updatedAt: new Date(),
+      // Create backup payload
+      const payload = {
         version: 1,
+        createdAt: Date.now(),
+        publicKey: keyMaterial.publicKey,
+        encryptedData: BackupCrypto.uint8ArrayToBase64(encryptedData),
+        salt: BackupCrypto.uint8ArrayToBase64(salt),
+        iv: BackupCrypto.uint8ArrayToBase64(iv),
+        checksum,
       };
 
-      // Upload to Firestore
-      const docRef = doc(db, 'userWalletBackups', this.userId);
-      await setDoc(docRef, backupDoc);
+      // Create backup document
+      const backupDoc = {
+        payload,
+        metadata: {
+          version: payload.version,
+          createdAt: payload.createdAt,
+          publicKey: payload.publicKey,
+          checksum: payload.checksum,
+        },
+        updatedAt: Date.now(),
+      };
 
+      // Upload to Supabase Storage
+      const supabase = getSupabase();
+      const filePath = `${this.userId}/backup.json`;
+      const jsonString = JSON.stringify(backupDoc);
+
+      const { error } = await supabase.storage
+        .from('backups')
+        .upload(filePath, jsonString, {
+          upsert: true,
+          contentType: 'application/json',
+        });
+
+      if (error) {
+        console.error('Failed to sync backup:', error);
+        throw new Error('Backup sync failed');
+      }
     } catch (error) {
       console.error('Failed to sync backup:', error);
-      throw new Error('Backup sync failed');
+      throw new Error('Backup sync failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
+  }
+
+  /**
+   * Compute SHA-256 checksum of data
+   */
+  private async computeChecksum(data: Uint8Array): Promise<string> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data as any);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   /**
@@ -136,19 +213,34 @@ export class ExtensionBackupService {
    */
   async getBackupMetadata(): Promise<{ exists: boolean; updatedAt?: Date; version?: number }> {
     try {
-      const docRef = doc(db, 'userWalletBackups', this.userId);
-      const docSnap = await getDoc(docRef);
+      const supabase = getSupabase();
+      const filePath = `${this.userId}/backup.json`;
 
-      if (docSnap.exists()) {
-        const data = docSnap.data() as FirestoreBackupDocument;
-        return {
-          exists: true,
-          updatedAt: data.updatedAt,
-          version: data.version,
-        };
+      const { data, error } = await supabase.storage
+        .from('backups')
+        .download(filePath);
+
+      if (error) {
+        if (error.message.includes('not found')) {
+          return { exists: false };
+        }
+        console.error('Failed to get backup metadata:', error);
+        return { exists: false };
       }
 
-      return { exists: false };
+      if (!data) {
+        return { exists: false };
+      }
+
+      // Parse the JSON from the blob
+      const jsonString = await data.text();
+      const backupDoc = JSON.parse(jsonString);
+
+      return {
+        exists: true,
+        updatedAt: backupDoc.updatedAt ? new Date(backupDoc.updatedAt) : undefined,
+        version: backupDoc.version,
+      };
     } catch (error) {
       console.error('Failed to get backup metadata:', error);
       return { exists: false };

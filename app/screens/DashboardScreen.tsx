@@ -7,6 +7,7 @@ import { openFaucet } from '../services/blockchain/faucet';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/Button';
+import { AppHeader } from '../components/layout/AppHeader';
 
 export default function DashboardScreen() {
   const { publicKey } = useWallet();
@@ -47,6 +48,8 @@ export default function DashboardScreen() {
 
   return (
     <ScreenContainer refreshing={balanceLoading} onRefresh={refreshBalance}>
+      <AppHeader />
+
       <View className="items-center mb-8">
         <Text className="text-text text-4xl font-bold mb-2">
           {balanceLoading ? '...' : formatBalance(balance)} GOR

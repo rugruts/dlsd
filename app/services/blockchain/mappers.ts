@@ -1,4 +1,5 @@
-import { PublicKey, TOKEN_PROGRAM_ID } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { TokenHolding, NftItem } from './models';
 
 export function mapTokenAccountToHolding(accountInfo: any, mint: string): TokenHolding {

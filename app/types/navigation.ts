@@ -10,6 +10,8 @@ export type RootStackParamList = {
   Send: { mint?: string } | undefined;
   Staking: undefined;
   Settings: undefined;
+  SettingsMain: undefined;
+  ManageWallets: undefined;
   TokenDetails: { token: TokenItem };
   NFTGallery: undefined;
   NFTDetail: { nft: NftItem };

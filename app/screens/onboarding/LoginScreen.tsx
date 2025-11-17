@@ -23,9 +23,18 @@ export default function LoginScreen() {
     }
   };
 
-  const handleDevSkip = () => {
+  const handleDevSkip = async () => {
     // For development: create a test wallet directly
-    navigation.navigate('Alias');
+    setLoading('dev');
+    try {
+      await signInWithProvider('google'); // Use mock Google sign-in
+      navigation.navigate('Alias');
+    } catch (error) {
+      console.error('Dev skip failed:', error);
+      Alert.alert('Error', 'Failed to create wallet');
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (

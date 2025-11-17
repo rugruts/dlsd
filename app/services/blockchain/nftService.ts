@@ -1,4 +1,4 @@
-import { Connection, PublicKey } from '@dumpsack/shared-utils/solana';
+import { Connection, PublicKey } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
 import { NftItem } from '../../types/wallet';
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, SafeAreaView, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
 import { useAppNavigation } from '../../navigation/hooks';
-import { useWalletStore } from '../../state/walletStore';
+import { useWalletStore } from '../../state/walletStoreV2';
 import { useSwapStore } from '../../state/swapStore';
 import { Button } from '../../components/Button';
 import { TokenItem } from '../../types/wallet';

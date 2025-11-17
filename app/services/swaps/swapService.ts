@@ -1,6 +1,6 @@
 import { Transaction, PublicKey } from '@solana/web3.js';
 import { createRpcClient } from '../blockchain/rpcClient';
-import { walletService } from '../blockchain/walletService';
+import { walletService } from '../wallet/walletService';
 import { SwapQuote, SwapRoute } from '../../../packages/shared-types';
 
 interface SwapConfig {
@@ -107,3 +107,31 @@ export class SwapService {
 }
 
 export const swapService = new SwapService();
+
+/**
+ * Create swap transaction (convenience function)
+ */
+export async function createSwapTransaction(
+  inputMint: PublicKey,
+  outputMint: PublicKey,
+  amount: bigint,
+  walletPubkey: PublicKey,
+  slippageBps?: number
+): Promise<Transaction> {
+  const quote = await swapService.getQuote(inputMint, outputMint, amount, slippageBps);
+  return swapService.buildSwapTransaction(quote, walletPubkey);
+}
+
+/**
+ * Simulate swap (convenience function)
+ */
+export async function simulateSwap(tx: Transaction): Promise<any> {
+  return swapService.simulateSwapTx(tx);
+}
+
+/**
+ * Execute swap (convenience function)
+ */
+export async function executeSwap(tx: Transaction): Promise<string> {
+  return swapService.sendSwapTx(tx);
+}

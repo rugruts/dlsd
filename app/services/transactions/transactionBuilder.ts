@@ -4,7 +4,7 @@ import {
   Transaction,
   SystemProgram,
   sendAndConfirmRawTransaction,
-} from '@dumpsack/shared-utils/solana';
+} from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } from '@solana/spl-token';
 

@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { PublicKey } from '@dumpsack/shared-utils/solana';
+import { PublicKey } from '@dumpsack/shared-utils';
 import { useAuthStore } from './authStore';
-import { useWalletStore } from './walletStore';
-import { getQuote } from '../services/swap/quoteService';
-import { createSwapTransaction, simulateSwap, executeSwap } from '../services/swap/swapService';
+import { useWalletStore } from './walletStoreV2';
+import { getSwapQuote } from '../services/swaps/quoteService';
+import { createSwapTransaction, simulateSwap, executeSwap } from '../services/swaps/swapService';
 import { SwapQuote, SwapResult } from '../types/swap';
 
 interface SwapState {
@@ -33,7 +33,7 @@ export const useSwapStore = create<SwapStore>((set, get) => ({
     set({ loading: true, error: undefined });
 
     try {
-      const quote = await getQuote(inputMint, outputMint, amount);
+      const quote = await getSwapQuote({ inputMint, outputMint, amount });
       set({ quote, loading: false });
     } catch (error) {
       set({

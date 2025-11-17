@@ -157,4 +157,4 @@ export class DumpSackMessageRouter implements MessageRouter {
 }
 
 // Import types and Transaction at the end to avoid circular imports
-import { Transaction } from '@dumpsack/shared-utils/solana';
+import { Transaction } from '@dumpsack/shared-utils';

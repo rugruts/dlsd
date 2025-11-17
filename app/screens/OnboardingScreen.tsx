@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Alert } from 'react-native';
 import { useAuthStore } from '../services/auth/authStore';
-import { AliasService } from '../services/auth/aliasService';
+import * as aliasService from '../services/auth/aliasService';
 import { Button } from '../components/Button';
 
 export default function OnboardingScreen() {
@@ -22,7 +22,9 @@ export default function OnboardingScreen() {
 
     setLoading(true);
     try {
-      await AliasService.createAlias(alias.trim(), userId);
+      // TODO: Get actual wallet address
+      const address = 'placeholder_address';
+      await aliasService.registerAlias(alias.trim(), address, userId);
       setStoreAlias(alias.trim());
       Alert.alert('Success', 'Alias created successfully!');
       // TODO: Navigate to next screen

@@ -5,14 +5,16 @@ import {
   TransactionInstruction,
   ComputeBudgetProgram,
   LAMPORTS_PER_SOL,
+} from '@solana/web3.js';
+import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
   createTransferInstruction
-} from '@solana/web3.js';
+} from '@solana/spl-token';
 import { createRpcClient } from '../blockchain/rpcClient';
-import { walletService } from '../blockchain/walletService';
+import { walletService } from '../wallet/walletService';
 import { TransferTxParams, TransactionSummary, FeeEstimate } from '../blockchain/models';
 import { TransactionSimulation } from '../../../packages/shared-types';
 

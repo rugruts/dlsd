@@ -1,18 +1,18 @@
 import { Alert } from 'react-native';
-import { createBackupService } from './backupService';
+import { BackupService } from './backupService';
 import { BackupKeyMaterial } from '../../../packages/shared-types';
 
 // TODO: Import from auth service
 // import { getCurrentUserId } from '../auth/authService';
 
 export class BackupIntegration {
-  private backupService: ReturnType<typeof createBackupService> | null = null;
+  private backupService: BackupService | null = null;
 
   constructor() {
     // TODO: Initialize with actual user ID from auth
     // const userId = getCurrentUserId();
     // if (userId) {
-    //   this.backupService = createBackupService(userId);
+    //   this.backupService = new BackupService();
     // }
   }
 

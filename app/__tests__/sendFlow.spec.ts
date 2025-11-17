@@ -3,7 +3,7 @@
  */
 import { useTransactionStore } from '../state/transactionStore';
 import { useAuthStore } from '../state/authStore';
-import { useWalletStore } from '../state/walletStore';
+import { useWalletStore } from '../state/walletStoreV2';
 
 // Mock all dependencies
 jest.mock('../state/authStore');

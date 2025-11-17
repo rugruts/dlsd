@@ -15,7 +15,7 @@ A native wallet for the Gorbagana blockchain, built as a monorepo with React Nat
 1. Install pnpm: `npm install -g pnpm`
 2. Install dependencies: `pnpm install`
 3. Set up environment variables (see Environment Configuration below)
-4. Set up Firebase project and configure authentication
+4. Set up Supabase project and configure authentication
 
 ## Environment Configuration
 
@@ -29,13 +29,18 @@ Copy `.env.example` to `.env` in the root directory and configure:
 # Environment
 NODE_ENV=development
 
-# Firebase Configuration
-FIREBASE_API_KEY=your_firebase_api_key
-FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=123456789
-FIREBASE_APP_ID=1:123456789:web:abcdef123456
+# Supabase Configuration
+EXPO_PUBLIC_SB_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SB_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_AUTH_PROVIDER=supabase
+EXPO_PUBLIC_AUTH_REDIRECT=your_app_redirect_url
+EXPO_PUBLIC_DEEP_LINK_SCHEME=dumpsack
+
+# Extension (Vite) Supabase Configuration
+VITE_SB_URL=https://your-project.supabase.co
+VITE_SB_ANON_KEY=your_supabase_anon_key
+VITE_AUTH_PROVIDER=supabase
+VITE_AUTH_REDIRECT=chrome-extension://your-extension-id/callback
 
 # RPC Configuration
 EXPO_PUBLIC_GBA_RPC_PRIMARY=https://rpc.gorbagana.wtf/

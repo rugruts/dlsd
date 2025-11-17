@@ -1,4 +1,4 @@
-import { PublicKey } from '@dumpsack/shared-utils/solana';
+import { PublicKey } from '@dumpsack/shared-utils';
 import { SignatureResult, TransactionSignatureResult } from '../background/types';
 
 declare global {

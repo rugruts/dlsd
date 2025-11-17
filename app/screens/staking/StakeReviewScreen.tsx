@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, Alert } from 'react-native';
+import { View, Text, SafeAreaView, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { useAppNavigation, useAppRoute } from '../../navigation/hooks';
 import { useStakingStore } from '../../state/stakingStore';
 import { Button } from '../../components/Button';

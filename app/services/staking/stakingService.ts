@@ -1,6 +1,6 @@
 import { Transaction, PublicKey, SystemProgram } from '@solana/web3.js';
 import { createRpcClient } from '../blockchain/rpcClient';
-import { walletService } from '../blockchain/walletService';
+import { walletService } from '../wallet/walletService';
 import { StakingSummary } from '../../../packages/shared-types';
 
 interface StakingConfig {

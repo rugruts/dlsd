@@ -1,7 +1,7 @@
 /**
  * Tests for dashboard functionality
  */
-import { useWalletStore } from '../state/walletStore';
+import { useWalletStore } from '../state/walletStoreV2';
 import { getTokenList } from '../services/blockchain/tokenService';
 import { getNfts } from '../services/blockchain/nftService';
 import { loadCachedTokens, saveTokens } from '../services/blockchain/rpcCache';

@@ -32,20 +32,21 @@ export interface FeatureFlags {
   enablePanicBunker: boolean;
 }
 
+export interface SupabaseConfig {
+  url: string;
+  anonKey: string;
+  authRedirect?: string;
+  deepLinkScheme?: string;
+}
+
 export interface DumpSackConfig {
   env: Environment;
   rpc: RpcConfig;
   swap: SwapConfig;
   onRamp: OnRampConfig;
   features: FeatureFlags;
-  firebase: {
-    apiKey: string;
-    authDomain: string;
-    projectId: string;
-    storageBucket: string;
-    messagingSenderId: string;
-    appId: string;
-  };
+  authProvider: 'supabase' | 'firebase';
+  supabase: SupabaseConfig;
 }
 
 function getFromImportMeta(key: string): string | undefined {
@@ -147,13 +148,12 @@ class ConfigManager {
         enableNotifications: true,
         enablePanicBunker: true,
       },
-      firebase: {
-        apiKey: '',
-        authDomain: '',
-        projectId: '',
-        storageBucket: '',
-        messagingSenderId: '',
-        appId: '',
+      authProvider: 'supabase',
+      supabase: {
+        url: '',
+        anonKey: '',
+        authRedirect: undefined,
+        deepLinkScheme: undefined,
       },
     };
 
@@ -183,12 +183,14 @@ class ConfigManager {
     cfg.features.enableBiometrics = readBool(['EXPO_PUBLIC_ENABLE_BIOMETRICS', 'VITE_ENABLE_BIOMETRICS'], cfg.features.enableBiometrics, 'explicitFalseIsOff');
     cfg.features.enableNotifications = readBool(['EXPO_PUBLIC_ENABLE_NOTIFICATIONS', 'VITE_ENABLE_NOTIFICATIONS'], cfg.features.enableNotifications, 'explicitFalseIsOff');
 
-    cfg.firebase.apiKey = readString(['FIREBASE_API_KEY', 'EXPO_PUBLIC_FIREBASE_API_KEY', 'VITE_FIREBASE_API_KEY'], '') ?? '';
-    cfg.firebase.authDomain = readString(['FIREBASE_AUTH_DOMAIN', 'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN', 'VITE_FIREBASE_AUTH_DOMAIN'], '') ?? '';
-    cfg.firebase.projectId = readString(['FIREBASE_PROJECT_ID', 'EXPO_PUBLIC_FIREBASE_PROJECT_ID', 'VITE_FIREBASE_PROJECT_ID'], '') ?? '';
-    cfg.firebase.storageBucket = readString(['FIREBASE_STORAGE_BUCKET', 'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET', 'VITE_FIREBASE_STORAGE_BUCKET'], '') ?? '';
-    cfg.firebase.messagingSenderId = readString(['FIREBASE_MESSAGING_SENDER_ID', 'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID', 'VITE_FIREBASE_MESSAGING_SENDER_ID'], '') ?? '';
-    cfg.firebase.appId = readString(['FIREBASE_APP_ID', 'EXPO_PUBLIC_FIREBASE_APP_ID', 'VITE_FIREBASE_APP_ID'], '') ?? '';
+    // Supabase configuration
+    const authProvider = readString(['EXPO_PUBLIC_AUTH_PROVIDER', 'VITE_AUTH_PROVIDER'], 'supabase');
+    cfg.authProvider = (authProvider === 'firebase' ? 'firebase' : 'supabase') as 'supabase' | 'firebase';
+
+    cfg.supabase.url = readString(['EXPO_PUBLIC_SB_URL', 'VITE_SB_URL'], '') ?? '';
+    cfg.supabase.anonKey = readString(['EXPO_PUBLIC_SB_ANON_KEY', 'VITE_SB_ANON_KEY'], '') ?? '';
+    cfg.supabase.authRedirect = readString(['EXPO_PUBLIC_AUTH_REDIRECT', 'VITE_AUTH_REDIRECT']);
+    cfg.supabase.deepLinkScheme = readString(['EXPO_PUBLIC_DEEP_LINK_SCHEME']);
 
     return cfg;
   }
@@ -203,6 +205,8 @@ class ConfigManager {
   getSwapConfig(): SwapConfig { return { ...this.config.swap }; }
   getOnRampConfig(): OnRampConfig { return { ...this.config.onRamp }; }
   getFeatureFlags(): FeatureFlags { return { ...this.config.features }; }
+  getSupabaseConfig(): SupabaseConfig { return { ...this.config.supabase }; }
+  getAuthProvider(): 'supabase' | 'firebase' { return this.config.authProvider; }
 
   isFeatureEnabled(feature: keyof FeatureFlags): boolean {
     return !!this.config.features[feature];
@@ -216,84 +220,60 @@ export const isStaging = () => configManager.isStaging();
 export const isProduction = () => configManager.isProduction();
 export const isFeatureEnabled = (feature: keyof FeatureFlags) => configManager.isFeatureEnabled(feature);
 
-// Firebase configuration and initialization utilities
-export class FirebaseConfig {
-  private static instance: FirebaseConfig | null = null;
-  private initialized = false;
+// Export Supabase utilities
+export { getSupabase, resetSupabase, type Database } from './supabase';
+export * as SupabaseAuth from './authSupabase';
 
-  private constructor() {}
+// Export OTP and Password authentication
+export {
+  requestEmailOtp,
+  verifyEmailOtp,
+  verifyEmailOtpSignIn,
+  signInWithPassword,
+  setNewPassword,
+  signOut,
+} from './authOtp';
+export type {
+  OtpRequestResult,
+  OtpVerifyResult,
+  PasswordSignInResult,
+  PasswordUpdateResult,
+} from './authOtp';
 
-  static getInstance(): FirebaseConfig {
-    if (!FirebaseConfig.instance) {
-      FirebaseConfig.instance = new FirebaseConfig();
-    }
-    return FirebaseConfig.instance;
-  }
+// Export Auth State Machine
+export {
+  AuthStateMachine,
+  AuthState,
+  AuthEvent,
+  getAuthStateMachine,
+  resetAuthStateMachine,
+} from './authStateMachine';
+export type { AuthContext, AuthStateTransition } from './authStateMachine';
 
-  getConfig() {
-    return {
-      apiKey: appConfig.firebase.apiKey,
-      authDomain: appConfig.firebase.authDomain,
-      projectId: appConfig.firebase.projectId,
-      storageBucket: appConfig.firebase.storageBucket,
-      messagingSenderId: appConfig.firebase.messagingSenderId,
-      appId: appConfig.firebase.appId,
-    };
-  }
+// Export Solana BIP39/BIP44 derivation utilities
+export * as SolanaDerive from './solanaDerive';
 
-  isInitialized(): boolean {
-    return this.initialized;
-  }
+// Export Multi-Wallet utilities
+export * from './multiWallet';
 
-  markInitialized(): void {
-    this.initialized = true;
-  }
+// Export Secure Mnemonic utilities
+export * from './secureMnemonic';
 
-  // Safe initialization that prevents double-initialization
-  async initializeFirebase() {
-    if (this.initialized) {
-      console.warn('Firebase already initialized');
-      return;
-    }
+// Export QR code utilities
+export * from './qr';
 
-    try {
-      // Dynamic import to avoid issues in environments where Firebase isn't available
-      const { initializeApp } = await import('firebase/app');
-      const app = initializeApp(this.getConfig());
-      this.markInitialized();
-      return app;
-    } catch (error) {
-      console.error('Failed to initialize Firebase:', error);
-      throw error;
-    }
-  }
+// Export wallet avatar utilities
+export * from './walletAvatar';
 
-  // Get Firestore instance (assumes Firebase is initialized)
-  async getFirestore() {
-    if (!this.initialized) {
-      await this.initializeFirebase();
-    }
+// Export i18n utilities (NOTE: i18next must be installed in consuming package)
+// export { initI18n } from './i18n';
+// export { default as i18n } from './i18n';
 
-    const { getFirestore } = await import('firebase/firestore');
-    return getFirestore();
-  }
+// Export Solana utilities
+export * from './solana';
 
-  // Get Auth instance (assumes Firebase is initialized)
-  async getAuth() {
-    if (!this.initialized) {
-      await this.initializeFirebase();
-    }
-
-    const { getAuth } = await import('firebase/auth');
-    return getAuth();
-  }
-}
-
-// Export singleton instance
-export const firebaseConfig = FirebaseConfig.getInstance();
-
-// Firebase services (initialized)
-export { db, auth } from './firebase';
+// Export Health utilities
+export * from './health';
 
 // Error classes and utilities
 export {

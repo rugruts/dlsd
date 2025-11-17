@@ -118,30 +118,37 @@ await throneLinkService.markThroneLinkUsed(linkId, recipientUserId);
 
 ## Authentication Integration
 
-### Firebase Auth Setup
+### Supabase Auth Setup
 
 ```typescript
 // In auth service
-import { firebaseConfig } from '../../packages/shared-utils';
+import { SupabaseAuth } from '@dumpsack/shared-utils';
 
-const auth = await firebaseConfig.getAuth();
+// Sign in with Google
+await SupabaseAuth.signInWithGoogle('https://your-app.com/callback');
 
-// Sign up
-const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+// Sign in with Email Magic Link
+await SupabaseAuth.signInWithEmailMagicLink('user@example.com', 'https://your-app.com/callback');
 
-// Sign in
-const userCredential = await signInWithEmailAndPassword(auth, email, password);
+// Get current session
+const session = await SupabaseAuth.getSession();
+const userId = session?.user.id;
 
 // Get current user
-const user = auth.currentUser;
-const userId = user?.uid;
+const user = await SupabaseAuth.currentUser();
+
+// Listen to auth state changes
+const unsubscribe = SupabaseAuth.onAuthStateChange((event, session) => {
+  console.log('Auth event:', event, session);
+});
 ```
 
 ### User Profile Creation
 
 ```typescript
-// After Firebase auth signup
-const userId = userCredential.user.uid;
+// After Supabase auth signup
+const session = await SupabaseAuth.getSession();
+const userId = session?.user.id;
 
 // Create initial user profile
 await userService.upsertUserProfile(userId, {

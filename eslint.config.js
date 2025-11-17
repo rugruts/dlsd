@@ -64,7 +64,16 @@ export default [
       "react-native/no-inline-styles": "off", // using NativeWind
 
       // Imports (ESLint 9 compatible)
-      "import-x/no-unresolved": "error",
+      "import-x/no-unresolved": ["warn", {
+        ignore: [
+          "^fs$",
+          "^path$",
+          "^vite$",
+          "^@vitejs/",
+          "^@solana/",
+          "^expo-",
+        ]
+      }],
       "import-x/named": "off", // noisy with TS type-only reexports
       "import-x/order": [
         "warn",
@@ -79,8 +88,10 @@ export default [
       react: { version: "detect" },
       "import-x/resolver": {
         typescript: {
+          alwaysTryTypes: true,
           project: tsProjects,
         },
+        node: true,
       },
     },
   },

@@ -1,27 +1,44 @@
-import { pbkdf2 } from 'expo-crypto';
-import { sha256 } from 'expo-crypto';
 import { BackupPayloadV1, PassphraseValidationResult } from './backupTypes';
 
 const PBKDF2_ITERATIONS = 100000;
-const KEY_LENGTH = 32; // 256 bits for AES-GCM
+const KEY_LENGTH = 256; // 256 bits for AES-GCM
 
-export async function deriveKeyFromPassphrase(passphrase: string): Promise<Uint8Array> {
-  const passphraseBytes = new TextEncoder().encode(passphrase);
+export async function deriveKeyFromPassphrase(passphrase: string): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
 
-  // Use PBKDF2 to derive a key from the passphrase
-  const key = await pbkdf2(
-    sha256,
-    passphraseBytes,
-    'DumpSackBackupSalt', // Fixed salt for deterministic derivation
-    PBKDF2_ITERATIONS,
-    KEY_LENGTH
+  // Import passphrase as key material
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(passphrase),
+    'PBKDF2',
+    false,
+    ['deriveBits', 'deriveKey']
+  );
+
+  // Fixed salt for deterministic derivation
+  const salt = encoder.encode('DumpSackBackupSalt');
+
+  // Derive key using PBKDF2
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: PBKDF2_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: KEY_LENGTH },
+    false,
+    ['encrypt', 'decrypt']
   );
 
   return key;
 }
 
 export async function computeChecksum(data: Uint8Array): Promise<string> {
-  return await sha256(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 export function validatePassphraseStrength(passphrase: string): PassphraseValidationResult {
