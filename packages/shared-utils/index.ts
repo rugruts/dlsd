@@ -253,6 +253,15 @@ export type { AuthContext, AuthStateTransition } from './authStateMachine';
 // Export Solana BIP39/BIP44 derivation utilities
 export * as SolanaDerive from './solanaDerive';
 
+// Export Gorbagana Program IDs (single source of truth)
+export * from './config/gorbaganaPrograms';
+
+// Export Swap/AMM configuration
+export * from './config/swapConfig';
+
+// Export Crypto Service (PBKDF2 + AES-GCM encryption)
+export * as CryptoService from './cryptoService';
+
 // Export Multi-Wallet utilities
 export * from './multiWallet';
 

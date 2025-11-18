@@ -1,8 +1,15 @@
-import { PublicKey, Transaction, sendAndConfirmRawTransaction } from '@dumpsack/shared-utils';
+import { PublicKey, Transaction, CryptoService, SolanaDerive } from '@dumpsack/shared-utils';
 import { Keypair } from '@solana/web3.js';
 import { loadPrivateKey, savePrivateKey } from '../auth/secureStorage';
 import { BackupCrypto, PanicBunkerLockedError } from '@dumpsack/shared-utils';
 import { panicService } from '../panicService';
+
+interface EncryptedBlob {
+  version: number;
+  salt: string;
+  iv: string;
+  data: string;
+}
 
 export interface WalletKeypair {
   publicKey: PublicKey;
@@ -15,13 +22,39 @@ class WalletService {
 
   /**
    * Initialize wallet from secure storage
+   * Restores encrypted wallet using user password
+   */
+  async restoreWalletFromStorage(password: string): Promise<WalletKeypair | null> {
+    const encryptedData = await loadPrivateKey();
+    if (!encryptedData) {
+      return null;
+    }
+
+    try {
+      // Parse encrypted blob
+      const blob: EncryptedBlob = JSON.parse(encryptedData);
+
+      // Decrypt mnemonic using PBKDF2 + AES-GCM
+      const mnemonic = await CryptoService.decryptMnemonic(blob, password);
+
+      // Derive keypair from mnemonic
+      this.keypair = SolanaDerive.deriveSolanaKeypairFromMnemonic(mnemonic);
+      this.publicKey = this.keypair.publicKey;
+
+      return { publicKey: this.publicKey };
+    } catch (error) {
+      console.error('Failed to restore wallet from storage:', error);
+      throw new Error('Invalid password or corrupted wallet data');
+    }
+  }
+
+  /**
+   * Initialize wallet from secure storage (legacy method)
    */
   async initialize(): Promise<void> {
     const encryptedKey = await loadPrivateKey();
     if (encryptedKey) {
-      // TODO: Decrypt and restore keypair
-      // For now, this is a placeholder
-      console.log('Wallet initialized from secure storage');
+      console.log('Wallet data found in secure storage');
     }
   }
 

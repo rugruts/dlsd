@@ -1,8 +1,12 @@
-import { SupabaseAuth, appConfig } from '@dumpsack/shared-utils';
+import { SupabaseAuth, appConfig, CryptoService } from '@dumpsack/shared-utils';
 import { Keypair } from '@solana/web3.js';
+import { Alert } from 'react-native';
 
 import type { AuthProvider } from './authStore';
 import { SecureStorage } from './secureStorage';
+
+// Get zkLogin salt from environment
+const ZKLOGIN_SALT = process.env.EXPO_PUBLIC_ZKLOGIN_SALT || 'default_salt_change_in_production';
 
 export class AuthService {
   static async signInWithProvider(providerType: AuthProvider): Promise<{ userId: string; keypair: Keypair }> {
@@ -18,11 +22,19 @@ export class AuthService {
         await SupabaseAuth.signInWithGoogle(redirectTo);
         break;
       case 'apple':
-        // TODO: Implement Apple OAuth with Supabase
-        throw new Error('Apple sign-in not yet implemented with Supabase');
+        // Apple OAuth - Coming Soon
+        Alert.alert(
+          'Coming Soon',
+          'Apple sign-in will be available in a future update.'
+        );
+        throw new Error('Apple sign-in not yet implemented');
       case 'x':
-        // TODO: Implement Twitter/X OAuth with Supabase
-        throw new Error('X sign-in not yet implemented with Supabase');
+        // Twitter/X OAuth - Coming Soon
+        Alert.alert(
+          'Coming Soon',
+          'X (Twitter) sign-in will be available in a future update.'
+        );
+        throw new Error('X sign-in not yet implemented');
       default:
         throw new Error('Unsupported provider');
     }
@@ -44,20 +56,44 @@ export class AuthService {
     return { userId, keypair };
   }
 
+  /**
+   * Send email OTP for login
+   */
   static async signInWithEmail(email: string): Promise<void> {
     const redirectTo = appConfig.supabase.authRedirect || '';
-
     await SupabaseAuth.signInWithEmailMagicLink(email, redirectTo);
   }
 
+  /**
+   * Get current user ID
+   */
+  static async getCurrentUserId(): Promise<string | null> {
+    const user = await this.getCurrentUser();
+    return user?.id || null;
+  }
+
+  /**
+   * Logout current user
+   */
+  static async logout(): Promise<void> {
+    await this.signOutUser();
+  }
+
+  /**
+   * Generate deterministic seedless wallet keypair from user ID
+   *
+   * Uses SHA-256(userId + salt) to create a deterministic 32-byte seed.
+   * This allows the same wallet to be recovered on any device after login.
+   */
   static async generateZkLoginKeypair(userId: string): Promise<Keypair> {
-    // TODO: Implement proper zkLogin derivation
-    // For now, generate a random keypair seeded by userId
-    const seed = new TextEncoder().encode(userId);
-    // Simple hash for demo; use proper zkLogin in production
-    const hash = await crypto.subtle.digest('SHA-256', seed);
-    const hashArray = new Uint8Array(hash);
-    return Keypair.fromSeed(hashArray.slice(0, 32));
+    // Deterministic seed derivation: SHA-256(userId + salt)
+    const seedInput = userId + ZKLOGIN_SALT;
+    const seedHash = await CryptoService.hashSha256(seedInput);
+
+    // Use first 32 bytes as seed for keypair
+    const seed = seedHash.slice(0, 32);
+
+    return Keypair.fromSeed(seed);
   }
 
   static async signOutUser(): Promise<void> {
