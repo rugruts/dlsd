@@ -1,7 +1,8 @@
-import { PublicKey } from '@dumpsack/shared-utils';
+import { PublicKey, GBA_STAKE_PROGRAM_ID } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
 import { StakeAccountInfo, StakeOverview } from './stakingTypes';
 import { getEstimatedAPR } from './validatorService';
+import { Connection } from '@solana/web3.js';
 
 export async function getStakeAccounts(ownerPubkey: PublicKey): Promise<StakeAccountInfo[]> {
   if (!appConfig.features.enableStaking) {
@@ -9,46 +10,30 @@ export async function getStakeAccounts(ownerPubkey: PublicKey): Promise<StakeAcc
   }
 
   try {
-    // Query stake program accounts owned by the user
-    const response = await fetch(appConfig.rpc.primary, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'getProgramAccounts',
-        params: [
-          'Stake11111111111111111111111111111111111111', // Stake program ID
-          {
-            commitment: 'confirmed',
-            filters: [
-              {
-                memcmp: {
-                  offset: 12, // Owner field offset in stake account
-                  bytes: ownerPubkey.toBase58(),
-                },
-              },
-            ],
+    // Create connection
+    const connection = new Connection(appConfig.rpc.primary, appConfig.rpc.commitment);
+
+    // Query stake program accounts owned by the user using GBA_STAKE_PROGRAM_ID
+    const accounts = await connection.getProgramAccounts(GBA_STAKE_PROGRAM_ID, {
+      commitment: appConfig.rpc.commitment,
+      filters: [
+        {
+          memcmp: {
+            offset: 12, // Authorized staker offset in stake account
+            bytes: ownerPubkey.toBase58(),
           },
-        ],
-      }),
+        },
+      ],
     });
-
-    if (!response.ok) {
-      throw new Error(`RPC request failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const accounts = data.result || [];
 
     // Parse stake accounts
     const stakeAccounts: StakeAccountInfo[] = [];
-    for (const account of accounts) {
+    for (const accountInfo of accounts) {
       try {
-        const stakeInfo = await parseStakeAccount(account);
+        const stakeInfo = await parseStakeAccount(accountInfo, connection);
         stakeAccounts.push(stakeInfo);
       } catch (error) {
-        console.warn('Failed to parse stake account:', account.pubkey, error);
+        console.warn('Failed to parse stake account:', accountInfo.pubkey.toBase58(), error);
       }
     }
 
@@ -59,33 +44,85 @@ export async function getStakeAccounts(ownerPubkey: PublicKey): Promise<StakeAcc
   }
 }
 
-async function parseStakeAccount(account: any): Promise<StakeAccountInfo> {
-  const pubkey = account.pubkey;
-  const balanceLamports = account.account?.lamports || 0;
+/**
+ * Parse native stake account data
+ *
+ * Stake account layout (Solana native):
+ * - Bytes 0-3: State discriminator (0 = uninitialized, 1 = initialized, 2 = delegated)
+ * - Bytes 4-11: Meta (authorized staker, authorized withdrawer, lockup)
+ * - Bytes 12+: Stake data (if delegated)
+ */
+async function parseStakeAccount(
+  accountInfo: { pubkey: PublicKey; account: { data: Buffer; lamports: number } },
+  connection: Connection
+): Promise<StakeAccountInfo> {
+  const pubkey = accountInfo.pubkey.toBase58();
+  const balanceLamports = accountInfo.account.lamports;
+  const data = accountInfo.account.data;
 
-  // Get rent-exempt amount for stake accounts
-  const rentResponse = await fetch(appConfig.rpc.primary, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'getMinimumBalanceForRentExemption',
-      params: [200], // Stake account size
-    }),
-  });
+  // Get rent-exempt amount for stake accounts (200 bytes)
+  const rentExemptLamports = await connection.getMinimumBalanceForRentExemption(200);
 
-  const rentData = await rentResponse.json();
-  const rentExemptLamports = rentData.result || 0;
-
-  // Parse stake state (simplified - in production would decode full stake state)
+  // Parse stake state from account data
   let state: StakeAccountInfo['state'] = 'inactive';
   let delegated: StakeAccountInfo['delegated'] | undefined;
   let withdrawableLamports = balanceLamports;
 
-  // This is a simplified parsing - real implementation would decode the stake account data
-  // For now, we'll assume all accounts are inactive
-  // TODO: Implement full stake account parsing
+  try {
+    // Read state discriminator (first 4 bytes as u32 little-endian)
+    const stateDiscriminator = data.readUInt32LE(0);
+
+    if (stateDiscriminator === 2) {
+      // Delegated state
+      // Parse delegation info starting at byte 220 (after Meta struct)
+      const voterPubkeyBytes = data.slice(220, 252); // 32 bytes for voter pubkey
+      const votePubkey = new PublicKey(voterPubkeyBytes).toBase58();
+
+      // Parse stake amount (8 bytes u64 at offset 252)
+      const stakeLamports = Number(data.readBigUInt64LE(252));
+
+      // Parse activation epoch (8 bytes u64 at offset 260)
+      const activationEpoch = Number(data.readBigUInt64LE(260));
+
+      // Parse deactivation epoch (8 bytes u64 at offset 268)
+      // If deactivation epoch is u64::MAX, it's not deactivating
+      const deactivationEpochRaw = data.readBigUInt64LE(268);
+      const deactivationEpoch = deactivationEpochRaw === BigInt('18446744073709551615')
+        ? undefined
+        : Number(deactivationEpochRaw);
+
+      // Get current epoch to determine state
+      const epochInfo = await connection.getEpochInfo();
+      const currentEpoch = epochInfo.epoch;
+
+      // Determine state based on epochs
+      if (deactivationEpoch !== undefined) {
+        state = currentEpoch >= deactivationEpoch ? 'inactive' : 'deactivating';
+        withdrawableLamports = state === 'inactive' ? balanceLamports : 0;
+      } else if (currentEpoch >= activationEpoch) {
+        state = 'active';
+        withdrawableLamports = 0;
+      } else {
+        state = 'activating';
+        withdrawableLamports = 0;
+      }
+
+      delegated = {
+        votePubkey,
+        stake: stakeLamports,
+        activationEpoch,
+        deactivationEpoch,
+      };
+    } else if (stateDiscriminator === 1) {
+      // Initialized but not delegated
+      state = 'inactive';
+      withdrawableLamports = balanceLamports;
+    }
+  } catch (error) {
+    console.warn('Failed to parse stake account data, assuming inactive:', error);
+    state = 'inactive';
+    withdrawableLamports = balanceLamports;
+  }
 
   return {
     pubkey,
@@ -123,7 +160,7 @@ export async function getStakeOverview(ownerPubkey: PublicKey): Promise<StakeOve
   }
 
   const total = totalActive + totalActivating + totalDeactivating + totalInactive;
-  const aprEstimate = getEstimatedAPR();
+  const aprEstimate = await getEstimatedAPR();
 
   return {
     totalActive,
