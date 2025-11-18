@@ -5,6 +5,8 @@ export interface TokenHolding {
   symbol?: string;
   amount: bigint;
   decimals: number;
+  usdValue?: number; // USD value of the token holding
+  price?: number; // Price per token in USD
 }
 
 export interface NftItem {

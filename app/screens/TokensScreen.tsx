@@ -21,7 +21,7 @@ export default function TokensScreen() {
     <ListItem
       title={item.symbol || `Token ${item.mint.slice(0, 8)}`}
       subtitle={`${formatAmount(item.amount, item.decimals)} ${item.symbol || 'tokens'}`}
-      rightText={`$${0.00}`} // TODO: Calculate USD value
+      rightText={item.usdValue !== undefined ? `$${item.usdValue.toFixed(2)}` : '$0.00'}
       icon={<Avatar size={32} fallback={item.symbol?.[0] || 'T'} />}
       onPress={() => navigation.navigate('TokenDetail' as never, { token: item })}
     />
