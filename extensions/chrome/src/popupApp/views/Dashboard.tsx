@@ -14,6 +14,7 @@ import { TopBar } from '../components/home/TopBar';
 import { BalanceCard } from '../components/home/BalanceCard';
 import { ActionRow } from '../components/home/ActionRow';
 import { TokenList } from '../components/home/TokenList';
+import { BottomNav } from '../components/BottomNav';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -125,6 +126,9 @@ export function Dashboard() {
         loading={loading}
         onTokenPress={handleTokenPress}
       />
+
+      {/* Fixed BottomNav - 60px */}
+      <BottomNav />
     </div>
   );
 }

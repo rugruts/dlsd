@@ -15,7 +15,6 @@ import { Backup } from './views/Backup';
 import { Panic } from './views/Panic';
 import { SettingsMain } from './views/SettingsMain';
 import { ManageWallets } from './views/ManageWallets';
-import { Nav } from './widgets/Nav';
 import { SignIn } from './views/SignIn';
 
 export function WalletApp() {
@@ -73,8 +72,8 @@ export function WalletApp() {
   return (
     <HashRouter>
       <div className={`${isFullView ? 'w-full min-h-screen' : 'w-[380px] h-[600px]'} bg-[#0f0f0f] text-white overflow-hidden flex flex-col`}>
-        <Nav isFullView={isFullView} />
-        <div className="flex-1 overflow-y-auto">
+        {/* No Nav component - each view has its own TopBar for Phantom-grade UI */}
+        <div className="flex-1 overflow-hidden">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
