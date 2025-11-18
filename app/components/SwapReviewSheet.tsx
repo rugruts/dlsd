@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { PublicKey } from '@solana/web3.js';
-import { swapService } from '../services/swaps/swapService';
-import { useTransactionStore } from '../state/transactionStore';
-import { useSecurityStore } from '../state/securityStore';
+
+import { SwapFormData, SwapQuote } from '@dumpsack/shared-types';
+
 import { biometricsService } from '../services/security/biometricsService';
+import { swapService } from '../services/swaps/swapService';
+import { useSecurityStore } from '../state/securityStore';
+import { useTransactionStore } from '../state/transactionStore';
+import { useWallet } from '../hooks/useWallet';
 import { Button } from './Button';
-import { SwapFormData, SwapQuote } from '../../packages/shared-types';
 
 interface SwapReviewSheetProps {
   visible: boolean;
@@ -23,17 +25,21 @@ export function SwapReviewSheet({
   quote,
 }: SwapReviewSheetProps) {
   const navigation = useNavigation();
-  const { addTransaction, updateTransactionStatus } = useTransactionStore();
+  const { publicKey } = useWallet();
+  const { addTransaction } = useTransactionStore();
   const { biometricsEnabled, requireBiometricsForSwap } = useSecurityStore();
   const [loading, setLoading] = useState(false);
-
-  const fromAddress = 'Your Address'; // TODO: Get from wallet
 
   const formatAmount = (amount: bigint) => {
     return (Number(amount) / 1000000000).toFixed(6); // Assume 9 decimals
   };
 
   const handleConfirm = async () => {
+    if (!publicKey) {
+      Alert.alert('Error', 'No wallet connected');
+      return;
+    }
+
     // Check biometrics if required
     if (biometricsEnabled && requireBiometricsForSwap) {
       const biometricSuccess = await biometricsService.requireBiometricAuth(
@@ -46,32 +52,29 @@ export function SwapReviewSheet({
     }
 
     setLoading(true);
-    try {
-      // Add to store
-      const txId = addTransaction({
-        from: fromAddress,
-        to: 'Swap Aggregator', // Placeholder
-        amount: form.inputAmount,
-        token: `${form.inputToken} → ${form.outputToken}`,
-      });
 
+    try {
       // Build swap transaction
-      const walletPubkey = new PublicKey(fromAddress); // TODO: Get real public key
-      const tx = await swapService.buildSwapTransaction(quote, walletPubkey);
+      const tx = await swapService.buildSwapTransaction(quote, publicKey);
 
       // Send transaction
       const txHash = await swapService.sendSwapTx(tx);
 
-      // Update status
-      updateTransactionStatus(txId, 'success', txHash);
+      // Log transaction
+      addTransaction({
+        signature: txHash,
+        type: 'swap',
+        amount: parseFloat(form.inputAmount),
+        to: `${form.inputToken} → ${form.outputToken}`,
+      });
 
-      Alert.alert('Success', 'Swap completed successfully!');
+      Alert.alert('Success', `Swap completed successfully!\n\nSignature: ${txHash.slice(0, 8)}...`);
       onClose();
       navigation.goBack();
     } catch (error) {
       console.error('Swap failed:', error);
-      updateTransactionStatus('last', 'failed');
-      Alert.alert('Error', 'Swap failed');
+      const err = error as Error;
+      Alert.alert('Error', err.message || 'Swap failed');
     } finally {
       setLoading(false);
     }

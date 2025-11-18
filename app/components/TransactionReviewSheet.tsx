@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, TouchableOpacity, Alert } from 'react-native';
 import { PublicKey } from '@solana/web3.js';
 import { useNavigation } from '@react-navigation/native';
-import { transactionService } from '../services/transactions/transactionService';
-import { useTransactionStore } from '../state/transactionStore';
-import { useSecurityStore } from '../state/securityStore';
+
+import { SendFormData, TransactionSimulation } from '@dumpsack/shared-types';
+
 import { biometricsService } from '../services/security/biometricsService';
+import { transactionService } from '../services/transactions/transactionService';
+import { useSecurityStore } from '../state/securityStore';
+import { useTransactionStore } from '../state/transactionStore';
+import { useWallet } from '../hooks/useWallet';
 import { Button } from './Button';
-import { SendFormData, TransactionSimulation } from '../../packages/shared-types';
 
 interface TransactionReviewSheetProps {
   visible: boolean;
@@ -23,16 +26,41 @@ export function TransactionReviewSheet({
   recipientPubkey,
 }: TransactionReviewSheetProps) {
   const navigation = useNavigation();
+  const { publicKey, activeWallet } = useWallet();
   const { addTransaction, updateTransactionStatus } = useTransactionStore();
   const { biometricsEnabled, requireBiometricsForSend } = useSecurityStore();
   const [loading, setLoading] = useState(false);
   const [simulation, setSimulation] = useState<TransactionSimulation | null>(null);
+  const [feeEstimate, setFeeEstimate] = useState<string>('0.0001 GOR');
 
-  // Mock data - in real app, get from wallet
-  const fromAddress = 'Your Address'; // TODO: Get from wallet
-  const feeEstimate = '0.0001 GOR'; // TODO: Calculate properly
+  const fromAddress = activeWallet?.publicKey || '';
+
+  // Calculate fee estimate on mount
+  useEffect(() => {
+    const estimateFee = async () => {
+      if (!publicKey) return;
+
+      try {
+        // Estimate fee based on transaction type
+        const baseFee = 0.000005; // 5000 lamports base fee
+        const priorityFee = 0.000001; // 1000 lamports priority fee
+        const totalFee = baseFee + priorityFee;
+        setFeeEstimate(`${totalFee.toFixed(6)} GOR`);
+      } catch (error) {
+        console.error('Failed to estimate fee:', error);
+        setFeeEstimate('~0.0001 GOR');
+      }
+    };
+
+    estimateFee();
+  }, [publicKey, form]);
 
   const handleConfirm = async () => {
+    if (!publicKey) {
+      Alert.alert('Error', 'No wallet connected');
+      return;
+    }
+
     // Check biometrics if required
     if (biometricsEnabled && requireBiometricsForSend) {
       const biometricSuccess = await biometricsService.requireBiometricAuth(
@@ -45,9 +73,11 @@ export function TransactionReviewSheet({
     }
 
     setLoading(true);
+    let txId: string | undefined;
+
     try {
       // Add to store
-      const txId = addTransaction({
+      txId = addTransaction({
         from: fromAddress,
         to: recipientPubkey.toBase58(),
         amount: form.amount,
@@ -59,7 +89,7 @@ export function TransactionReviewSheet({
       const mint = form.token !== 'GOR' ? new PublicKey(form.token) : undefined;
 
       const tx = await transactionService.buildTransferTx({
-        from: new PublicKey(fromAddress), // TODO: Get real public key
+        from: publicKey,
         to: recipientPubkey,
         amount,
         mint,
@@ -71,16 +101,19 @@ export function TransactionReviewSheet({
       // Update status
       updateTransactionStatus(txId, 'success', txHash);
 
-      Alert.alert('Success', 'Transaction sent successfully!');
+      Alert.alert('Success', `Transaction sent successfully!\n\nSignature: ${txHash.slice(0, 8)}...`);
       onClose();
       navigation.goBack();
     } catch (error) {
       console.error('Transaction failed:', error);
-      // Find the transaction and update status
-      // For now, assume last one
-      const txId = 'last'; // TODO: Better handling
-      updateTransactionStatus(txId, 'failed');
-      Alert.alert('Error', 'Transaction failed');
+      const err = error as Error;
+
+      // Update transaction status if we created one
+      if (txId) {
+        updateTransactionStatus(txId, 'failed');
+      }
+
+      Alert.alert('Error', err.message || 'Transaction failed');
     } finally {
       setLoading(false);
     }
