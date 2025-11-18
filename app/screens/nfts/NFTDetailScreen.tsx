@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, SafeAreaView, Image, ScrollView } from 'react-native';
-import { useAppRoute } from '../../navigation/hooks';
+import { View, Text, SafeAreaView, Image, ScrollView, Alert } from 'react-native';
+
+import { useAppRoute, useAppNavigation } from '../../navigation/hooks';
 import { Button } from '../../components/Button';
 
 export default function NFTDetailScreen() {
+  const navigation = useAppNavigation();
   const { params } = useAppRoute<'NFTDetail'>();
   const { nft } = params;
 
@@ -66,7 +68,13 @@ export default function NFTDetailScreen() {
           {/* Actions */}
           <Button
             title="Send NFT"
-            onPress={() => {/* TODO: Navigate to send NFT screen */}}
+            onPress={() => {
+              // NFT sending not yet implemented - show alert
+              Alert.alert(
+                'Coming Soon',
+                'NFT sending functionality will be available in a future update.'
+              );
+            }}
             className="w-full"
           />
         </View>

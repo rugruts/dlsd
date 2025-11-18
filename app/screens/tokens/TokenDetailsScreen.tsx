@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, SafeAreaView, Image, TouchableOpacity } from 'react-native';
-import { useAppRoute } from '../../navigation/hooks';
+
+import { useAppRoute, useAppNavigation } from '../../navigation/hooks';
 import { Button } from '../../components/Button';
 
 export default function TokenDetailsScreen() {
+  const navigation = useAppNavigation();
   const { params } = useAppRoute<'TokenDetails'>();
   const { token } = params;
 
@@ -44,12 +46,12 @@ export default function TokenDetailsScreen() {
         <View className="space-y-4">
           <Button
             title="Send"
-            onPress={() => {/* TODO: Navigate to send screen */}}
+            onPress={() => navigation.navigate('Send', { mint: token.address })}
             className="w-full"
           />
           <Button
             title="Swap"
-            onPress={() => {/* TODO: Navigate to swap screen */}}
+            onPress={() => navigation.navigate('Swap')}
             variant="secondary"
             className="w-full"
           />

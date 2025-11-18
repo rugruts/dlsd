@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, SafeAreaView, TextInput, Alert, ScrollView } from 'react-native';
+
 import { useAppNavigation } from '../../navigation/hooks';
 import { useAuthStore } from '../../state/authStore';
 import { Button } from '../../components/Button';
+import { SolanaDerive } from '@dumpsack/shared-utils';
 
 export default function ImportWalletScreen() {
   const navigation = useAppNavigation();
@@ -23,9 +25,14 @@ export default function ImportWalletScreen() {
       return;
     }
 
-    // TODO: Actually derive address from mnemonic
-    // For now, show a mock address
-    setDerivedAddress('GorbaganaAddress1234567890abcdef');
+    try {
+      // Derive the actual address from the mnemonic
+      const keypair = SolanaDerive.deriveSolanaKeypairFromMnemonic(mnemonic.trim());
+      setDerivedAddress(keypair.publicKey.toBase58());
+    } catch (error) {
+      console.error('Failed to derive address:', error);
+      Alert.alert('Error', 'Failed to derive wallet address from mnemonic');
+    }
   };
 
   const handleImport = async () => {
