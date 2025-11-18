@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { getSupabase } from '../../../../packages/shared-utils/supabase';
 import { appConfig } from '../../../../packages/shared-utils';
 import { useWalletStore } from './stores/walletStoreV2';
+import type { MultiWalletState } from '@dumpsack/shared-types';
 
 import { Dashboard } from './views/Dashboard';
 import { Tokens } from './views/Tokens';
@@ -20,32 +21,66 @@ import { SignIn } from './views/SignIn';
 export function WalletApp() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isFullView, setIsFullView] = useState(false);
-  const { wallets } = useWalletStore();
+  const { wallets, restoreFromSupabase } = useWalletStore();
 
   useEffect(() => {
     // Check if we're in popup or full tab view
     const isPopup = window.location.pathname.includes('popup.html');
     setIsFullView(!isPopup);
 
-    // Check Supabase session AND wallet existence
+    // Get Supabase instance
     const supabase = getSupabase();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const hasSession = !!session;
-      const hasWallet = wallets.length > 0;
-      setIsAuthenticated(hasSession && hasWallet);
-    });
+
+    // Initialize authentication and wallet restoration
+    const initializeApp = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        // User is authenticated - restore wallets from Supabase
+        console.log('User authenticated, restoring wallets from Supabase...');
+        const restored = await restoreFromSupabase();
+        console.log('Wallet restoration result:', restored);
+
+        // Check if we have wallets (either restored or already in local storage)
+        const currentWallets = useWalletStore.getState().wallets;
+        console.log('Current wallets after restoration:', currentWallets.length);
+        const hasWallet = currentWallets.length > 0;
+
+        console.log('Setting isAuthenticated to:', true && hasWallet);
+        setIsAuthenticated(true && hasWallet);
+      } else {
+        // No session
+        console.log('No session found');
+        setIsAuthenticated(false);
+      }
+    };
+
+    initializeApp();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const hasSession = !!session;
-      const hasWallet = wallets.length > 0;
-      setIsAuthenticated(hasSession && hasWallet);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('Auth state changed, event:', _event);
+      if (session) {
+        // User just signed in - restore wallets from Supabase
+        console.log('Auth state changed - user signed in, restoring wallets...');
+        const restored = await restoreFromSupabase();
+        console.log('Wallet restoration result:', restored);
+        const currentWallets = useWalletStore.getState().wallets;
+        console.log('Current wallets after restoration:', currentWallets.length);
+        const hasWallet = currentWallets.length > 0;
+        console.log('Setting isAuthenticated to:', true && hasWallet);
+        setIsAuthenticated(true && hasWallet);
+      } else {
+        // User signed out
+        console.log('User signed out');
+        setIsAuthenticated(false);
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [wallets]);
+  }, [restoreFromSupabase]);
 
   // Loading state
   if (isAuthenticated === null) {

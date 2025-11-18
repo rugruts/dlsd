@@ -1,45 +1,52 @@
 /**
  * DumpSack Wallet Official Brand Theme
- * 
- * Based on the DumpSack mascot (green furry grumpy face with orange eyebrows)
- * Dark, high-contrast memecoin aesthetic with sharp, thick outlines
+ * Version: 1.2 (Authoritative)
+ *
+ * Based on DumpSack UI Specification v1.2
+ * "Oscar-the-Grouch fintech wallet with Phantom-level polish"
+ * Trashpunk green aesthetic with bold, degen-friendly design
  */
 
 export const DumpSackTheme = {
   colors: {
-    // Primary brand colors from mascot
-    primaryGreen: '#0E3B2E',      // Background - dark forest green
-    furGreen: '#1F6F2E',          // Accent - vibrant fur green
-    eyebrowOrange: '#FF6A1E',     // Accent - signature orange
-    boneWhite: '#F3EFD8',         // Text / icons - off-white
-    shadowBlack: '#050505',       // Depth, outlines - near black
-    
-    // Semantic colors
-    background: '#0E3B2E',
-    surface: '#124A38',           // Slightly lighter than background for cards
-    card: '#124A38',
-    border: '#0A2C22',            // Darker green for borders
-    
-    // Text colors
+    // Brand Colors (from UI Spec v1.2)
+    background: '#0E3B2E',            // primary green
+    backgroundElevated: '#0A2C22',    // darker panels
+    accent: '#1F6F2E',                // bright green
+    accentSoft: '#214E33',            // subtler accent
+    orange: '#FF6A1E',                // highlight color (actions, warnings)
+
+    // Text Colors
+    textPrimary: '#F3EFD8',           // soft paper yellow
+    textSecondary: '#A8B5A9',         // desaturated green-beige
+    textMuted: '#7B8C83',             // muted text
+
+    // Borders
+    border: '#143F33',
+
+    // Feedback Colors
+    error: '#FF3B30',
+    success: '#45C16F',
+    warning: '#FFB52E',
+
+    // Overlay
+    overlay: 'rgba(0, 0, 0, 0.4)',
+
+    // Legacy aliases for backward compatibility
+    primaryGreen: '#0E3B2E',
+    furGreen: '#1F6F2E',
+    eyebrowOrange: '#FF6A1E',
+    boneWhite: '#F3EFD8',
+    shadowBlack: '#050505',
+    surface: '#0A2C22',
+    card: '#0A2C22',
+    cardBackground: '#0A2C22',
     text: '#F3EFD8',
-    textSecondary: '#B8B5A0',     // Muted bone white
-    textMuted: '#7A7866',
-    
-    // Accent colors
-    primary: '#FF6A1E',           // Orange for primary actions
-    secondary: '#1F6F2E',         // Green for secondary actions
-    accent: '#FF6A1E',
-    
-    // Status colors (trash punk themed)
-    success: '#2ECC71',           // Bright green
-    warning: '#F39C12',           // Amber
-    error: '#E74C3C',             // Red
-    info: '#3498DB',              // Blue
-    
-    // Transparent overlays
-    overlay: 'rgba(5, 5, 5, 0.8)',
-    overlayLight: 'rgba(5, 5, 5, 0.4)',
-    
+    primary: '#FF6A1E',
+    secondary: '#1F6F2E',
+    info: '#3498DB',
+    overlayLight: 'rgba(0, 0, 0, 0.2)',
+
     // Button states
     buttonPrimary: '#FF6A1E',
     buttonPrimaryHover: '#E65A0E',
@@ -47,31 +54,33 @@ export const DumpSackTheme = {
     buttonSecondary: '#1F6F2E',
     buttonSecondaryHover: '#2A8F3E',
     buttonSecondaryActive: '#165020',
-    buttonDanger: '#E74C3C',
-    buttonDangerHover: '#C0392B',
-    
+    buttonDanger: '#FF3B30',
+    buttonDangerHover: '#E6342A',
+
     // Input states
     inputBackground: '#0A2C22',
-    inputBorder: '#1F6F2E',
+    inputBorder: '#143F33',
     inputBorderFocus: '#FF6A1E',
     inputText: '#F3EFD8',
-    inputPlaceholder: '#7A7866',
+    inputPlaceholder: '#7B8C83',
   },
-  
+
   spacing: {
     xs: 4,
     sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    xxl: 24,
   },
-  
+
   borderRadius: {
-    sm: 8,
-    md: 14,
-    lg: 18,
+    xs: 8,
+    sm: 10,
+    md: 12,
+    lg: 16,
     xl: 24,
+    sheet: 28,
     full: 9999,
   },
   
@@ -81,8 +90,17 @@ export const DumpSackTheme = {
     thick: 3,
     heavy: 4,
   },
-  
+
   typography: {
+    display: { fontSize: 32, fontWeight: '700' },
+    h1:      { fontSize: 24, fontWeight: '700' },
+    h2:      { fontSize: 20, fontWeight: '600' },
+    h3:      { fontSize: 18, fontWeight: '500' },
+    body:    { fontSize: 16, fontWeight: '400' },
+    small:   { fontSize: 14, fontWeight: '400' },
+    micro:   { fontSize: 12, fontWeight: '500' },
+
+    // Legacy structure for backward compatibility
     fontFamily: {
       primary: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       mono: 'Menlo, Monaco, "Courier New", monospace',

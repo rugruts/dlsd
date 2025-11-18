@@ -1,5 +1,6 @@
-import { TokenItem, NftItem } from './wallet';
-import { SwapQuote } from './swap';
+import type { SwapQuote } from '@dumpsack/shared-utils';
+
+import type { TokenItem, NftItem } from './wallet';
 
 export type RootStackParamList = {
   Onboarding: undefined;

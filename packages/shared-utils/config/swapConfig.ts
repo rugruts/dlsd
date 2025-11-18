@@ -1,9 +1,11 @@
-import { PublicKey } from '@solana/web3.js';
-import { GBA_AMM_PROGRAMS } from './gorbaganaPrograms';
+import type { PublicKey } from '@solana/web3.js';
 
 /**
  * AMM (Automated Market Maker) Configuration for Gorbagana
- * 
+ *
+ * NOTE: AMM programs are temporarily disabled until we add Gorbagana-native
+ * swap support. For now, swaps on Solana network use Jupiter aggregator.
+ *
  * Defines available DEX programs and routing preferences for swaps.
  */
 
@@ -15,43 +17,8 @@ export interface AmmProgram {
   priority: number; // Lower number = higher priority for routing
 }
 
-export const AVAILABLE_AMMS: AmmProgram[] = [
-  {
-    id: GBA_AMM_PROGRAMS.trashbinCpammV3,
-    name: 'Trashbin CPAMM',
-    version: 'v3',
-    enabled: true,
-    priority: 1, // Highest priority - default
-  },
-  {
-    id: GBA_AMM_PROGRAMS.trashbinCpammV2,
-    name: 'Trashbin CPAMM',
-    version: 'v2',
-    enabled: true,
-    priority: 2,
-  },
-  {
-    id: GBA_AMM_PROGRAMS.meteoraDammV2Fork,
-    name: 'Meteora DAMM',
-    version: 'v2',
-    enabled: true,
-    priority: 3,
-  },
-  {
-    id: GBA_AMM_PROGRAMS.meteoraBondingCurveFork,
-    name: 'Meteora Bonding Curve',
-    version: 'v1',
-    enabled: true,
-    priority: 4,
-  },
-  {
-    id: GBA_AMM_PROGRAMS.trashbinCpamm,
-    name: 'Trashbin CPAMM',
-    version: 'v1',
-    enabled: false, // Legacy version, disabled by default
-    priority: 5,
-  },
-];
+// TODO: Re-add AMM programs when Gorbagana swap support is implemented
+export const AVAILABLE_AMMS: AmmProgram[] = [];
 
 /**
  * Get enabled AMM programs sorted by priority

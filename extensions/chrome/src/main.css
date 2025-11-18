@@ -8,21 +8,35 @@
  */
 
 :root {
-  /* Brand Colors */
-  --ds-bg: #0E3B2E;
-  --ds-surface: #124A38;
-  --ds-card: #124A38;
-  --ds-border: #0A2C22;
+  /* Brand Colors - From DumpSack UI Spec v1.2 */
+  --ds-bg: #0E3B2E;                    /* background */
+  --ds-bg-elevated: #0A2C22;           /* backgroundElevated */
+  --ds-accent: #1F6F2E;                /* accent - bright green */
+  --ds-accent-soft: #214E33;           /* accentSoft */
+  --ds-orange: #FF6A1E;                /* orange - highlight color */
+
+  /* Text Colors */
+  --ds-text: #F3EFD8;                  /* textPrimary - soft paper yellow */
+  --ds-text-secondary: #A8B5A9;        /* textSecondary - desaturated green-beige */
+  --ds-text-muted: #7B8C83;            /* textMuted */
+
+  /* Borders */
+  --ds-border: #143F33;                /* border */
+
+  /* Feedback Colors */
+  --ds-error: #FF3B30;                 /* error */
+  --ds-success: #45C16F;               /* success */
+  --ds-warning: #FFB52E;               /* warning */
+
+  /* Overlay */
+  --ds-overlay: rgba(0, 0, 0, 0.4);    /* overlay */
+
+  /* Legacy aliases for backward compatibility */
+  --ds-surface: #0A2C22;
+  --ds-card: #0A2C22;
   --ds-green: #1F6F2E;
-  --ds-orange: #FF6A1E;
-  --ds-text: #F3EFD8;
-  --ds-text-secondary: #B8B5A0;
-  --ds-text-muted: #7A7866;
   --ds-primary: #FF6A1E;
   --ds-secondary: #1F6F2E;
-  --ds-success: #2ECC71;
-  --ds-warning: #F39C12;
-  --ds-error: #E74C3C;
   --ds-info: #3498DB;
 }
 
@@ -52,10 +66,16 @@ code {
     monospace;
 }
 
-#root, #approval-root {
-  width: 100%;
+#root,
+#approval-root {
+  /* Fixed content width for extension popup & approval windows */
+  width: 360px;
+  max-width: 360px;
+  min-width: 360px;
   height: 100%;
+  margin: 0 auto;
   background-color: var(--ds-bg);
+  overflow-x: hidden;
 }
 
 /* Custom scrollbar styles */
@@ -84,6 +104,32 @@ code {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--ds-orange);
+}
+
+/* Input Styles - High Contrast Text */
+input[type="email"],
+input[type="password"],
+input[type="text"],
+textarea {
+  color: #F3EFD8 !important; /* Bone white - bright and readable */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #7A7866 !important; /* Muted gray for placeholder */
+  opacity: 1 !important;
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  color: #7A7866 !important;
+  opacity: 1 !important;
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+  color: #7A7866 !important;
+  opacity: 1 !important;
 }
 
 /* DumpSack Button Hover States */

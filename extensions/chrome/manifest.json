@@ -33,7 +33,7 @@
   "options_page": "options.html",
   "web_accessible_resources": [
     {
-      "resources": ["provider.js"],
+      "resources": ["provider.js", "auth-callback.html"],
       "matches": ["<all_urls>"]
     }
   ]

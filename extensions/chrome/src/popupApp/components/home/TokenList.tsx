@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { DumpSackTheme, useTokenList, TokenListProps, TokenItemData } from '@dumpsack/shared-ui';
+import { DumpSackTheme, useTokenList, TokenListProps, TokenItemData, DSTokenIcon } from '@dumpsack/shared-ui';
 
 function TokenListItem({ item }: { item: TokenItemData }) {
   const changeColor = item.change?.color === 'success' ? DumpSackTheme.colors.success : DumpSackTheme.colors.error;
@@ -26,27 +26,12 @@ function TokenListItem({ item }: { item: TokenItemData }) {
       }}
     >
       {/* Token Icon */}
-      <div style={{
-        width: '40px',
-        height: '40px',
-        backgroundColor: DumpSackTheme.colors.surface,
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: DumpSackTheme.spacing.sm,
-      }}>
-        {item.icon ? (
-          <img src={item.icon} alt={item.symbol} style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
-        ) : (
-          <span style={{
-            color: DumpSackTheme.colors.textSecondary,
-            fontSize: DumpSackTheme.typography.fontSize.xs,
-            fontWeight: DumpSackTheme.typography.fontWeight.bold,
-          }}>
-            {item.iconFallback}
-          </span>
-        )}
+      <div style={{ marginRight: DumpSackTheme.spacing.sm }}>
+        <DSTokenIcon
+          mint={item.mint}
+          size={40}
+          metadata={{ logoURI: item.icon || undefined }}
+        />
       </div>
 
       {/* Token Info */}

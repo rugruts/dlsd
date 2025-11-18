@@ -58,6 +58,7 @@ export default defineConfig({
         popup: 'popup.html',
         options: 'options.html',
         approval: 'approval.html',
+        'auth-callback': 'auth-callback.html',
         background: 'src/background.ts',
         content: 'src/content.ts'
       },

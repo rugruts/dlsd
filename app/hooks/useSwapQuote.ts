@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { swapService } from '../services/swaps/swapService';
-import { SwapQuote } from '../../packages/shared-types';
+import type { SwapQuote } from '@dumpsack/shared-utils';
 
 export function useSwapQuote(
   inputMint: PublicKey | null,

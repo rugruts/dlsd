@@ -277,6 +277,9 @@ export * from './qr';
 // Export wallet avatar utilities
 export * from './walletAvatar';
 
+// Export Coingecko service for top tokens
+export * from './coingeckoService';
+
 // Export i18n utilities (NOTE: i18next must be installed in consuming package)
 // export { initI18n } from './i18n';
 // export { default as i18n } from './i18n';

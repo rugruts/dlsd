@@ -7,7 +7,12 @@ import { useTokens } from '../hooks/useTokens';
 import { useSwapQuote } from '../hooks/useSwapQuote';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { Button } from '../components/Button';
-import { SwapFormData } from '../../packages/shared-types';
+
+interface SwapFormData {
+  inputToken: string;
+  outputToken: string;
+  inputAmount: string;
+}
 
 export default function SwapScreen() {
   const navigation = useNavigation();

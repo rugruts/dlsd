@@ -1,11 +1,12 @@
-import { Transaction, PublicKey } from '@solana/web3.js';
-import {
+import type { PublicKey, Transaction } from '@solana/web3.js';
+
+import type {
   SwapProvider,
-  SwapQuoteRequest,
-  SwapQuote,
   SwapProviderConfig,
+  SwapQuote,
+  SwapQuoteRequest,
 } from '../types';
-import { GBA_AMM_PROGRAMS } from '../../config/gorbaganaPrograms';
+// import { GBA_AMM_PROGRAMS } from '../../config/gorbaganaPrograms';
 import { getEnabledAmms } from '../../config/swapConfig';
 
 /**
@@ -26,7 +27,7 @@ import { getEnabledAmms } from '../../config/swapConfig';
 class GorbaganaAmmProvider implements SwapProvider {
   id = 'gorbaganaAmm' as const;
   label = 'Gorbagana AMM';
-  supportedNetworks = ['gorbagana'] as const;
+  supportedNetworks = ['gorbagana' as const];
 
   private config: Required<SwapProviderConfig>;
 
@@ -79,10 +80,7 @@ class GorbaganaAmmProvider implements SwapProvider {
     // - GBA_AMM_PROGRAMS.meteoraDammV2Fork (priority 3)
     // - GBA_AMM_PROGRAMS.meteoraBondingCurveFork (priority 4)
 
-    throw new Error(
-      'Gorbagana AMM swaps are not implemented yet. ' +
-      'Please switch to Solana network to use Jupiter for swaps.'
-    );
+    throw new Error('GORBAGANA_AMM_NOT_IMPLEMENTED');
   }
 
   async buildSwapTx(quote: SwapQuote, userPublicKey: PublicKey): Promise<Transaction> {
@@ -98,10 +96,7 @@ class GorbaganaAmmProvider implements SwapProvider {
     // 4. Set compute budget and priority fees
     // 5. Return transaction ready to sign
 
-    throw new Error(
-      'Gorbagana AMM swaps are not implemented yet. ' +
-      'Please switch to Solana network to use Jupiter for swaps.'
-    );
+    throw new Error('GORBAGANA_AMM_NOT_IMPLEMENTED');
   }
 
   /**
@@ -117,7 +112,9 @@ class GorbaganaAmmProvider implements SwapProvider {
    * @returns Object containing all Gorbagana AMM program IDs
    */
   getAmmPrograms() {
-    return GBA_AMM_PROGRAMS;
+    // TODO: Re-enable when AMM programs are added back
+    // return GBA_AMM_PROGRAMS;
+    return {};
   }
 }
 

@@ -88,6 +88,15 @@ export class SwapService {
       return await provider.getQuote(request);
     } catch (error) {
       console.error('Error getting swap quote:', error);
+      
+      // Handle Gorbagana AMM not implemented error
+      if (error instanceof Error && error.message === 'GORBAGANA_AMM_NOT_IMPLEMENTED') {
+        throw new Error(
+          'Gorbagana AMM swaps are coming soon! ' +
+          'Please switch to Solana network to use Jupiter for swaps.'
+        );
+      }
+      
       throw error instanceof Error ? error : new Error('Failed to get swap quote');
     }
   }
@@ -111,6 +120,15 @@ export class SwapService {
       return tx;
     } catch (error) {
       console.error('Error building swap transaction:', error);
+      
+      // Handle Gorbagana AMM not implemented error
+      if (error instanceof Error && error.message === 'GORBAGANA_AMM_NOT_IMPLEMENTED') {
+        throw new Error(
+          'Gorbagana AMM swaps are coming soon! ' +
+          'Please switch to Solana network to use Jupiter for swaps.'
+        );
+      }
+      
       throw error instanceof Error ? error : new Error('Failed to build swap transaction');
     }
   }

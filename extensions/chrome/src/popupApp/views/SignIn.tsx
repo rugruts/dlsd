@@ -3,8 +3,8 @@
  * Dual-mode authentication: OTP (Code) and Password
  */
 
-import React, { useState } from 'react';
-import { signInWithGoogle } from '../../services/auth';
+import React, { useState, useEffect } from 'react';
+import { signInWithGoogle, checkAuthCallback } from '../../services/auth';
 import { requestEmailOtp, signInWithPassword } from '@dumpsack/shared-utils';
 import { DumpSackTheme } from '@dumpsack/shared-ui';
 import { LOGO_PATH } from '../../utils/tokenIcons';
@@ -23,7 +23,63 @@ export function SignIn() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { importFromMnemonic, wallets } = useWalletStore();
+  const { importFromMnemonic, wallets, restoreFromSupabase } = useWalletStore();
+
+  // Poll for OAuth callback completion
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    const checkForAuthCompletion = async () => {
+      const result = await checkAuthCallback();
+
+      if (result) {
+        if (pollInterval) clearInterval(pollInterval);
+
+        if (result.success) {
+          console.log('OAuth authentication successful, restoring wallets...');
+
+          // Try to restore wallets from Supabase first
+          const restored = await restoreFromSupabase();
+          console.log('Wallet restoration result:', restored);
+
+          // Get fresh wallet state after restoration
+          const currentWallets = useWalletStore.getState().wallets;
+          console.log('Current wallets after restoration:', currentWallets.length);
+
+          // If no wallets found in Supabase, create a new one
+          if (!restored && currentWallets.length === 0) {
+            console.log('No wallets found, creating new wallet...');
+            try {
+              const mnemonic = bip39.generateMnemonic(wordlist);
+              await importFromMnemonic(mnemonic);
+              console.log('New wallet created successfully');
+            } catch (walletError) {
+              console.error('Failed to create wallet:', walletError);
+              setError('Authentication successful but failed to create wallet. Please try again.');
+              setLoading(false);
+              return;
+            }
+          }
+
+          console.log('Authentication complete, reloading...');
+          // Reload to show authenticated state
+          window.location.reload();
+        } else {
+          setError(result.error || 'Authentication failed');
+          setLoading(false);
+        }
+      }
+    };
+
+    // Start polling when loading
+    if (loading) {
+      pollInterval = setInterval(checkForAuthCompletion, 1000);
+    }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [loading, wallets.length, importFromMnemonic]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -31,27 +87,13 @@ export function SignIn() {
 
     try {
       const result = await signInWithGoogle();
-      if (result.success) {
-        // Create wallet if user doesn't have one
-        if (wallets.length === 0) {
-          try {
-            const mnemonic = bip39.generateMnemonic(wordlist);
-            await importFromMnemonic(mnemonic);
-          } catch (walletError) {
-            console.error('Failed to create wallet:', walletError);
-            setError('Authentication successful but failed to create wallet. Please try again.');
-            setLoading(false);
-            return;
-          }
-        }
-        // Reload to show authenticated state
-        window.location.reload();
-      } else {
+      if (!result.success) {
         setError(result.error || 'Failed to sign in with Google');
+        setLoading(false);
       }
+      // If successful, keep loading state and let the polling effect handle completion
     } catch (err: any) {
       setError(err.message || 'Failed to sign in with Google');
-    } finally {
       setLoading(false);
     }
   };
@@ -100,11 +142,23 @@ export function SignIn() {
       const result = await signInWithPassword(email.trim(), password);
 
       if (result.success && result.session) {
-        // Create wallet if user doesn't have one
-        if (wallets.length === 0) {
+        console.log('Password authentication successful, restoring wallets...');
+
+        // Try to restore wallets from Supabase first
+        const restored = await restoreFromSupabase();
+        console.log('Wallet restoration result:', restored);
+
+        // Get fresh wallet state after restoration
+        const currentWallets = useWalletStore.getState().wallets;
+        console.log('Current wallets after restoration:', currentWallets.length);
+
+        // If no wallets found in Supabase, create a new one
+        if (!restored && currentWallets.length === 0) {
+          console.log('No wallets found, creating new wallet...');
           try {
             const mnemonic = bip39.generateMnemonic(wordlist);
             await importFromMnemonic(mnemonic);
+            console.log('New wallet created successfully');
           } catch (walletError) {
             console.error('Failed to create wallet:', walletError);
             setError('Authentication successful but failed to create wallet. Please try again.');
@@ -112,6 +166,8 @@ export function SignIn() {
             return;
           }
         }
+
+        console.log('Authentication complete, reloading...');
         // Session is set, reload to show authenticated state
         window.location.reload();
       } else {
@@ -124,7 +180,32 @@ export function SignIn() {
     }
   };
 
-  const handleOtpSuccess = (session: any) => {
+  const handleOtpSuccess = async (session: any) => {
+    console.log('OTP authentication successful, restoring wallets...');
+
+    // Try to restore wallets from Supabase first
+    const restored = await restoreFromSupabase();
+    console.log('Wallet restoration result:', restored);
+
+    // Get fresh wallet state after restoration
+    const currentWallets = useWalletStore.getState().wallets;
+    console.log('Current wallets after restoration:', currentWallets.length);
+
+    // If no wallets found in Supabase, create a new one
+    if (!restored && currentWallets.length === 0) {
+      console.log('No wallets found, creating new wallet...');
+      try {
+        const mnemonic = bip39.generateMnemonic(wordlist);
+        await importFromMnemonic(mnemonic);
+        console.log('New wallet created successfully');
+      } catch (walletError) {
+        console.error('Failed to create wallet:', walletError);
+        setError('Authentication successful but failed to create wallet. Please try again.');
+        return;
+      }
+    }
+
+    console.log('Authentication complete, reloading...');
     // Session is set, reload to show authenticated state
     window.location.reload();
   };
@@ -407,13 +488,14 @@ export function SignIn() {
             placeholder="your@email.com"
             disabled={loading}
             autoFocus
+            className="ds-input"
             style={{
               width: '100%',
               padding: `${DumpSackTheme.spacing.md}px ${DumpSackTheme.spacing.lg}px`,
               backgroundColor: DumpSackTheme.colors.cardBackground,
               border: `${DumpSackTheme.borderWidth.normal}px solid ${DumpSackTheme.colors.border}`,
               borderRadius: DumpSackTheme.borderRadius.md,
-              color: DumpSackTheme.colors.text,
+              color: DumpSackTheme.colors.inputText,
               fontSize: DumpSackTheme.typography.fontSize.base,
               marginBottom: DumpSackTheme.spacing.md,
               outline: 'none',

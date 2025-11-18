@@ -1,10 +1,10 @@
-import { Connection, PublicKey, GBA_TOKEN_PROGRAM_ID } from '@dumpsack/shared-utils';
+import { Connection, type PublicKey, GBA_TOKEN_PROGRAM_ID, appConfig } from '@dumpsack/shared-utils';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { appConfig } from '@dumpsack/shared-utils';
-import { TokenItem } from '../../types/wallet';
-import { tokenIcons } from '../../assets/tokens';
-import { GOR_MINT, getTokenMetadata, fetchTokenMetadataOnChain } from './tokenRegistry';
+
 import { PriceService } from './priceService';
+import { GOR_MINT, getTokenMetadata, fetchTokenMetadataOnChain } from './tokenRegistry';
+import { tokenIcons } from '../../assets/tokens';
+import type { TokenItem } from '../../types/wallet';
 
 export async function getWalletBalance(pubkey: PublicKey): Promise<{ lamports: number; uiAmount: number }> {
   const connection = new Connection(appConfig.rpc.primary, 'confirmed');
@@ -13,13 +13,33 @@ export async function getWalletBalance(pubkey: PublicKey): Promise<{ lamports: n
   return { lamports, uiAmount };
 }
 
-export async function getTokenAccounts(pubkey: PublicKey): Promise<any[]> {
+interface ParsedTokenAccount {
+  pubkey: PublicKey;
+  account: {
+    data: {
+      parsed: {
+        info: {
+          mint: string;
+          owner: string;
+          tokenAmount: {
+            amount: string;
+            decimals: number;
+            uiAmount: number;
+            uiAmountString: string;
+          };
+        };
+      };
+    };
+  };
+}
+
+export async function getTokenAccounts(pubkey: PublicKey): Promise<ParsedTokenAccount[]> {
   const connection = new Connection(appConfig.rpc.primary, 'confirmed');
   try {
     const accounts = await connection.getParsedTokenAccountsByOwner(pubkey, {
       programId: GBA_TOKEN_PROGRAM_ID, // Use GBA token program ID
     });
-    return accounts.value;
+    return accounts.value as ParsedTokenAccount[];
   } catch (error) {
     console.error('Failed to fetch token accounts:', error);
     return [];

@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { SwapQuote } from '@dumpsack/shared-utils';
 
-import { SwapFormData, SwapQuote } from '@dumpsack/shared-types';
+// SwapFormData is a simple form type, can be defined locally or kept in shared-types
+interface SwapFormData {
+  inputToken: string;
+  outputToken: string;
+  inputAmount: string;
+}
 
 import { biometricsService } from '../services/security/biometricsService';
 import { swapService } from '../services/swaps/swapService';
@@ -97,28 +103,28 @@ export function SwapReviewSheet({
           <View className="mb-3">
             <Text className="text-textSecondary text-sm">To</Text>
             <Text className="text-text">
-              {formatAmount(quote.outputAmount)} {form.outputToken}
+              {formatAmount(quote.amountOut)} {form.outputToken}
             </Text>
           </View>
 
           <View className="mb-3">
             <Text className="text-textSecondary text-sm">Minimum Received</Text>
             <Text className="text-text">
-              {formatAmount(quote.minOutputAmount)} {form.outputToken}
+              {formatAmount(quote.minAmountOut)} {form.outputToken}
             </Text>
           </View>
 
           <View className="mb-3">
             <Text className="text-textSecondary text-sm">Price Impact</Text>
             <Text className="text-text">
-              {(quote.priceImpact * 100).toFixed(2)}%
+              {(quote.priceImpactBps / 100).toFixed(2)}%
             </Text>
           </View>
 
           <View className="mb-3">
             <Text className="text-textSecondary text-sm">Fee</Text>
             <Text className="text-text">
-              {formatAmount(quote.fee)} GOR
+              {formatAmount(quote.estimatedFeesLamports)} GOR
             </Text>
           </View>
 
@@ -126,7 +132,7 @@ export function SwapReviewSheet({
           <View className="mb-6">
             <Text className="text-textSecondary text-sm">Route</Text>
             <Text className="text-text">
-              {quote.route.length} hop{quote.route.length > 1 ? 's' : ''} via aggregator
+              {quote.routeDescription || `via ${quote.providerId}`}
             </Text>
           </View>
 

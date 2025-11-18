@@ -30,6 +30,27 @@ export type { DSHeaderProps } from './components/DSHeader';
 export { DSModal } from './components/DSModal';
 export type { DSModalProps } from './components/DSModal';
 
+export { DSQuickAction } from './components/DSQuickAction';
+export type { DSQuickActionProps } from './components/DSQuickAction';
+
+export { DSTokenRow } from './components/DSTokenRow';
+export type { DSTokenRowProps } from './components/DSTokenRow';
+
+export { DSScreen } from './components/DSScreen';
+export type { DSScreenProps } from './components/DSScreen';
+
+export { DSTabBar } from './components/DSTabBar';
+export type { DSTabBarProps, TabItem, TabKey } from './components/DSTabBar';
+
+export { DSNFTRow } from './components/DSNFTRow';
+export type { DSNFTRowProps } from './components/DSNFTRow';
+
+export { DSToast } from './components/DSToast';
+export type { DSToastProps, ToastVariant } from './components/DSToast';
+
+export { DSTokenIcon } from './components/DSTokenIcon';
+export type { DSTokenIconProps } from './components/DSTokenIcon';
+
 // Home Components (Platform-agnostic)
 export { useTopBar } from './components/home/TopBar';
 export type { TopBarProps, TopBarData } from './components/home/TopBar';

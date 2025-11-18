@@ -1,13 +1,27 @@
 import { ProviderRequest, ProviderResponse, ConnectedSite } from '../../../packages/shared-types';
+import { signerService } from './background/signerService';
+import { Transaction } from '@dumpsack/shared-utils';
 
 class BackgroundService {
   private connectedSites: Map<string, ConnectedSite> = new Map();
-  private mockPublicKey = 'DumpSackMockPublicKey12345678901234567890123456789012';
-  private mockPrivateKey = 'DumpSackMockPrivateKey12345678901234567890123456789012';
+  private currentPublicKey: string | null = null;
 
   constructor() {
     this.setupMessageListeners();
     this.loadConnectedSites();
+    this.loadWalletPublicKey();
+  }
+
+  private async loadWalletPublicKey(): Promise<void> {
+    try {
+      const result = await chrome.storage.local.get(['walletPublicKey']) as { walletPublicKey?: string };
+      if (result.walletPublicKey) {
+        this.currentPublicKey = result.walletPublicKey;
+        signerService.setPublicKey(result.walletPublicKey);
+      }
+    } catch (error) {
+      console.error('Failed to load wallet public key:', error);
+    }
   }
 
   private setupMessageListeners() {
@@ -35,11 +49,11 @@ class BackgroundService {
 
         // Check if we have a connection for this origin
         const site = this.connectedSites.get(origin);
-        if (site) {
+        if (site && this.currentPublicKey) {
           // Notify content script of existing connection
           chrome.tabs.sendMessage(tabId, {
             type: 'DUMPSACK_CONNECTION_RESTORED',
-            payload: { publicKey: this.mockPublicKey }
+            payload: { publicKey: this.currentPublicKey }
           }).catch(() => {
             // Content script might not be ready yet
           });
@@ -110,9 +124,13 @@ class BackgroundService {
   }
 
   private async handleConnect(origin: string): Promise<{ publicKey: string }> {
+    if (!this.currentPublicKey) {
+      throw new Error('No wallet available. Please unlock your wallet first.');
+    }
+
     // Check if already connected
     if (this.connectedSites.has(origin)) {
-      return { publicKey: this.mockPublicKey };
+      return { publicKey: this.currentPublicKey };
     }
 
     // Request permission (in real implementation, show popup)
@@ -131,7 +149,7 @@ class BackgroundService {
     this.connectedSites.set(origin, site);
     await this.saveConnectedSites();
 
-    return { publicKey: this.mockPublicKey };
+    return { publicKey: this.currentPublicKey };
   }
 
   private async handleDisconnect(origin: string): Promise<void> {
@@ -139,10 +157,14 @@ class BackgroundService {
     await this.saveConnectedSites();
   }
 
-  private async handleSignTransaction(transaction: any, origin: string): Promise<any> {
+  private async handleSignTransaction(transaction: Transaction, origin: string): Promise<Transaction> {
     const site = this.connectedSites.get(origin);
     if (!site || !site.permissions.includes('signTransaction')) {
       throw new Error('Not authorized to sign transactions for this site');
+    }
+
+    if (!this.currentPublicKey) {
+      throw new Error('No wallet available. Please unlock your wallet first.');
     }
 
     // Request user approval (in real implementation, show popup)
@@ -151,17 +173,23 @@ class BackgroundService {
       throw new Error('Transaction signing denied by user');
     }
 
-    // Mock signing - in real implementation, use actual private key
-    console.log('Mock signing transaction for', origin);
-    transaction.signature = 'mock_signature_' + Date.now();
-
-    return transaction;
+    // Use real signing service
+    try {
+      const signedTransaction = await signerService.signTransaction(transaction);
+      return signedTransaction;
+    } catch (error) {
+      throw new Error(`Transaction signing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
-  private async handleSignAllTransactions(transactions: any[], origin: string): Promise<any[]> {
+  private async handleSignAllTransactions(transactions: Transaction[], origin: string): Promise<Transaction[]> {
     const site = this.connectedSites.get(origin);
     if (!site || !site.permissions.includes('signTransaction')) {
       throw new Error('Not authorized to sign transactions for this site');
+    }
+
+    if (!this.currentPublicKey) {
+      throw new Error('No wallet available. Please unlock your wallet first.');
     }
 
     // Request user approval
@@ -170,11 +198,12 @@ class BackgroundService {
       throw new Error('Transaction signing denied by user');
     }
 
-    // Mock signing
-    return transactions.map(tx => ({
-      ...tx,
-      signature: 'mock_signature_' + Date.now() + '_' + Math.random(),
-    }));
+    // Use real signing service
+    try {
+      return await signerService.signAllTransactions(transactions);
+    } catch (error) {
+      throw new Error(`Transaction signing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private async handleSignMessage(message: Uint8Array, origin: string): Promise<{ signature: Uint8Array }> {
@@ -183,19 +212,23 @@ class BackgroundService {
       throw new Error('Not authorized to sign messages for this site');
     }
 
+    if (!this.currentPublicKey) {
+      throw new Error('No wallet available. Please unlock your wallet first.');
+    }
+
     // Request user approval
     const approved = await this.requestMessageApproval(origin, 'Sign Message');
     if (!approved) {
       throw new Error('Message signing denied by user');
     }
 
-    // Mock signing
-    const mockSignature = new Uint8Array(64);
-    for (let i = 0; i < 64; i++) {
-      mockSignature[i] = Math.floor(Math.random() * 256);
+    // Use real signing service
+    try {
+      const signature = await signerService.signMessage(message);
+      return { signature };
+    } catch (error) {
+      throw new Error(`Message signing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    return { signature: mockSignature };
   }
 
   private async requestPermission(origin: string): Promise<boolean> {
@@ -226,8 +259,18 @@ class BackgroundService {
     await this.saveConnectedSites();
   }
 
-  getMockPublicKey(): string {
-    return this.mockPublicKey;
+  getPublicKey(): string | null {
+    return this.currentPublicKey;
+  }
+
+  async setWalletPublicKey(publicKey: string): Promise<void> {
+    this.currentPublicKey = publicKey;
+    signerService.setPublicKey(publicKey);
+    try {
+      await chrome.storage.local.set({ walletPublicKey: publicKey });
+    } catch (error) {
+      console.error('Failed to save wallet public key:', error);
+    }
   }
 }
 
@@ -235,4 +278,4 @@ class BackgroundService {
 export const backgroundService = new BackgroundService();
 
 // Make it available globally for popup
-(globalThis as any).backgroundService = backgroundService;
+(globalThis as typeof window & { backgroundService?: BackgroundService }).backgroundService = backgroundService;

@@ -143,7 +143,9 @@ create table if not exists public.throne_links (
   payload jsonb not null,
   created_at timestamptz default now(),
   expires_at timestamptz not null,
-  used boolean default false
+  used boolean default false,
+  used_by uuid references auth.users(id) on delete set null,
+  used_at timestamptz
 );
 
 -- Enable RLS
@@ -172,6 +174,45 @@ create policy "Users can update own throne links"
 -- Create index for faster lookups
 create index if not exists idx_throne_links_owner on public.throne_links(owner_user_id);
 create index if not exists idx_throne_links_expires on public.throne_links(expires_at);
+
+-- ----------------------------------------------------------------------------
+-- Table: public.user_wallets
+-- Purpose: Store wallet metadata linked to user accounts
+-- This allows wallets to be restored when signing in from different devices
+-- Includes salt for deterministic mnemonic encryption across devices
+-- ----------------------------------------------------------------------------
+create table if not exists public.user_wallets (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  wallets jsonb not null default '[]'::jsonb,
+  salt text,
+  updated_at timestamptz default now()
+);
+
+-- Enable RLS
+alter table public.user_wallets enable row level security;
+
+-- Drop existing policies if they exist
+drop policy if exists "Users can read own wallets" on public.user_wallets;
+drop policy if exists "Users can insert own wallets" on public.user_wallets;
+drop policy if exists "Users can update own wallets" on public.user_wallets;
+
+-- Users can only read their own wallets
+create policy "Users can read own wallets"
+  on public.user_wallets for select
+  using (auth.uid() = user_id);
+
+-- Users can insert their own wallets
+create policy "Users can insert own wallets"
+  on public.user_wallets for insert
+  with check (auth.uid() = user_id);
+
+-- Users can update their own wallets
+create policy "Users can update own wallets"
+  on public.user_wallets for update
+  using (auth.uid() = user_id);
+
+-- Add salt column if it doesn't exist (for migration from older schema)
+alter table public.user_wallets add column if not exists salt text;
 
 -- ============================================================================
 -- 3. FUNCTIONS & TRIGGERS

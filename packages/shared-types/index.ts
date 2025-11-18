@@ -32,34 +32,14 @@ export interface SendFormData {
   token: string;
 }
 
-export interface SwapQuote {
-  inputMint: string;
-  outputMint: string;
-  inputAmount: bigint;
-  outputAmount: bigint;
-  minOutputAmount: bigint;
-  priceImpact: number;
-  fee: bigint;
-  route: SwapRoute[];
-}
-
-export interface SwapRoute {
-  programId: string;
-  accounts: string[];
-  data: string;
-}
+// Swap types moved to @dumpsack/shared-utils/swap/types
+// Import from there instead: SwapQuote, SwapQuoteRequest, SwapResult, etc.
 
 export interface StakingSummary {
   stakedBalance: bigint;
   pendingRewards: bigint;
   apy: number;
   lockupPeriod: number; // in days
-}
-
-export interface SwapFormData {
-  inputToken: string;
-  outputToken: string;
-  inputAmount: string;
 }
 
 export interface SecuritySettings {
@@ -167,6 +147,8 @@ export interface ThroneLink {
   createdAt: Date;
   expiresAt: Date;
   used: boolean;
+  usedBy?: string; // User ID who used this link
+  usedAt?: Date; // When the link was used
 }
 
 export interface ThroneLinkPayload {

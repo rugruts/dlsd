@@ -90,6 +90,8 @@ export interface Database {
           created_at: string;
           expires_at: string | null;
           used: boolean;
+          used_by: string | null;
+          used_at: string | null;
         };
         Insert: {
           id?: string;
@@ -99,6 +101,8 @@ export interface Database {
           created_at?: string;
           expires_at?: string | null;
           used?: boolean;
+          used_by?: string | null;
+          used_at?: string | null;
         };
         Update: {
           id?: string;
@@ -108,6 +112,8 @@ export interface Database {
           created_at?: string;
           expires_at?: string | null;
           used?: boolean;
+          used_by?: string | null;
+          used_at?: string | null;
         };
       };
       users: {

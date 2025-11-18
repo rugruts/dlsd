@@ -1,10 +1,9 @@
 import { create } from 'zustand';
-import { PublicKey } from '@dumpsack/shared-utils';
+import { PublicKey, type SwapQuote, type SwapResult } from '@dumpsack/shared-utils';
 import { useAuthStore } from './authStore';
 import { useWalletStore } from './walletStoreV2';
 import { getSwapQuote } from '../services/swaps/quoteService';
 import { createSwapTransaction, simulateSwap, executeSwap } from '../services/swaps/swapService';
-import { SwapQuote, SwapResult } from '../types/swap';
 
 interface SwapState {
   loading: boolean;

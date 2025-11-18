@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clear DumpSack Storage</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .danger { background: #ff4444; color: white; }
+    .info { background: #4444ff; color: white; }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>DumpSack Wallet - Storage Debug</h1>
+  
+  <div>
+    <button class="info" onclick="viewStorage()">View Storage</button>
+    <button class="danger" onclick="clearStorage()">Clear All Storage</button>
+  </div>
+  
+  <div id="output"></div>
+
+  <script>
+    async function viewStorage() {
+      const data = await chrome.storage.local.get(null);
+      document.getElementById('output').innerHTML = '<h2>Storage Contents:</h2><pre>' + 
+        JSON.stringify(data, null, 2) + '</pre>';
+    }
+
+    async function clearStorage() {
+      if (confirm('Are you sure you want to clear ALL storage? This will delete your wallet data!')) {
+        await chrome.storage.local.clear();
+        alert('Storage cleared!');
+        document.getElementById('output').innerHTML = '<p style="color: green;">Storage cleared successfully!</p>';
+      }
+    }
+  </script>
+</body>
+</html>
+

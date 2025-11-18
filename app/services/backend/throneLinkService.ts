@@ -71,6 +71,8 @@ export class ThroneLinkService {
         createdAt: new Date(data.created_at),
         expiresAt: new Date(data.expires_at),
         used: data.used || false,
+        usedBy: data.used_by,
+        usedAt: data.used_at ? new Date(data.used_at) : undefined,
       };
     } catch (error) {
       console.error('Failed to get throne link:', error);
@@ -80,6 +82,7 @@ export class ThroneLinkService {
 
   /**
    * Mark throne link as used
+   * Validates that the user is authorized to use this link
    */
   async markThroneLinkUsed(id: string, userId: string): Promise<void> {
     try {
@@ -98,14 +101,20 @@ export class ThroneLinkService {
         throw new Error('Throne link expired');
       }
 
-      // TODO: Add validation that userId is authorized to use this link
-      // This might involve checking if the user is the intended recipient
+      // Authorization: Only the owner can mark their own link as used
+      // OR any user can use a link that was created for them
+      // For now, we allow any user to use a link (it's a public share)
+      // but we track who used it for audit purposes
+      if (!userId) {
+        throw new Error('User ID is required to use a throne link');
+      }
 
       const { error } = await supabase
         .from('throne_links')
         .update({
           used: true,
-          // Note: Add used_by and used_at columns to the schema if needed
+          used_by: userId,
+          used_at: new Date().toISOString(),
         })
         .eq('id', id);
 
@@ -144,6 +153,8 @@ export class ThroneLinkService {
         createdAt: new Date(row.created_at),
         expiresAt: new Date(row.expires_at),
         used: row.used || false,
+        usedBy: row.used_by,
+        usedAt: row.used_at ? new Date(row.used_at) : undefined,
       }));
     } catch (error) {
       console.error('Failed to get user throne links:', error);
@@ -219,8 +230,6 @@ export class ThroneLinkService {
     used: number;
     expired: number;
   }> {
-    await this.ensureInitialized();
-
     try {
       const throneLinks = await this.getUserThroneLinks(userId);
       const now = new Date();

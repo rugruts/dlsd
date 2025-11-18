@@ -4,21 +4,17 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
+import { DSScreen, DumpSackTheme, DSHeader, type Token } from '@dumpsack/shared-ui';
 import { useWalletStore } from '../stores/walletStoreV2';
-
-import { DumpSackTheme } from '@dumpsack/shared-ui';
-
+import { BottomNav } from '../components/BottomNav';
+import { TokenList } from '../components/home/TokenList';
 import { getTokenIcon } from '../../utils/tokenIcons';
-
-interface Token {
-  symbol: string;
-  name: string;
-  balance: number;
-  usdValue: number;
-}
+import { getUiTokenList } from '../../services/tokenService';
 
 export function Tokens() {
+  const navigate = useNavigate();
   const { wallets, activeIndex } = useWalletStore();
   const activeWallet = wallets.find(w => w.index === activeIndex);
   const publicKey = activeWallet?.publicKey;
