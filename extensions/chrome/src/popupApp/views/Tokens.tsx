@@ -4,8 +4,11 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useWalletStore } from '../stores/walletStore';
+
+import { useWalletStore } from '../stores/walletStoreV2';
+
 import { DumpSackTheme } from '@dumpsack/shared-ui';
+
 import { getTokenIcon } from '../../utils/tokenIcons';
 
 interface Token {
@@ -16,7 +19,9 @@ interface Token {
 }
 
 export function Tokens() {
-  const { publicKey } = useWalletStore();
+  const { wallets, activeIndex } = useWalletStore();
+  const activeWallet = wallets.find(w => w.index === activeIndex);
+  const publicKey = activeWallet?.publicKey;
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(false);
 

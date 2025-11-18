@@ -13,7 +13,6 @@ import { Send } from './views/Send';
 import { Receive } from './views/Receive';
 import { Backup } from './views/Backup';
 import { Panic } from './views/Panic';
-import { Settings } from './views/Settings';
 import { SettingsMain } from './views/SettingsMain';
 import { ManageWallets } from './views/ManageWallets';
 import { Nav } from './widgets/Nav';
@@ -87,8 +86,7 @@ export function WalletApp() {
             <Route path="/receive" element={<Receive />} />
             <Route path="/backup" element={<Backup enabled={appConfig.features.enableBackup} />} />
             <Route path="/panic" element={<Panic />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/settings-main" element={<SettingsMain />} />
+            <Route path="/settings" element={<SettingsMain />} />
             <Route path="/manage-wallets" element={<ManageWallets />} />
           </Routes>
         </div>

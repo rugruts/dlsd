@@ -3,10 +3,16 @@
  * App info, version, links
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 export function AboutSettings() {
-  const appVersion = '1.0.0'; // TODO: Read from manifest.json
+  const [appVersion, setAppVersion] = useState('...');
+
+  useEffect(() => {
+    // Read version from manifest.json
+    const manifest = chrome.runtime.getManifest();
+    setAppVersion(manifest.version);
+  }, []);
 
   const handleOpenLink = (url: string) => {
     chrome.tabs.create({ url });

@@ -1,15 +1,26 @@
-import { createExtensionBackupService } from './backupService';
-import { BackupKeyMaterial } from '../../../../packages/shared-types';
+import { ExtensionBackupService } from './backupService';
+import { getSupabase } from '@dumpsack/shared-utils';
+import { useWalletStore } from '../popupApp/stores/walletStoreV2';
 
 export class ExtensionBackupIntegration {
-  private backupService: ReturnType<typeof createExtensionBackupService> | null = null;
+  private backupService: ExtensionBackupService | null = null;
 
   constructor() {
-    // TODO: Initialize with actual user ID from auth
-    // const userId = getCurrentUserId();
-    // if (userId) {
-    //   this.backupService = createExtensionBackupService(userId);
-    // }
+    // Initialize with user ID from Supabase auth
+    this.initializeFromAuth();
+  }
+
+  private async initializeFromAuth() {
+    try {
+      const supabase = getSupabase();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        this.backupService = new ExtensionBackupService(session.user.id);
+      }
+    } catch (error) {
+      console.error('Failed to initialize backup service:', error);
+    }
   }
 
   /**
@@ -28,40 +39,67 @@ export class ExtensionBackupIntegration {
   }
 
   /**
-   * Prompt user to restore from backup during onboarding
+   * Create a backup with user-provided passphrase
    */
-  async promptRestoreBackup(): Promise<BackupKeyMaterial | null> {
+  async createBackup(passphrase: string): Promise<void> {
     if (!this.backupService) {
-      throw new Error('Backup service not initialized');
+      // Try to initialize again
+      await this.initializeFromAuth();
+      if (!this.backupService) {
+        throw new Error('Backup service not initialized. Please sign in first.');
+      }
     }
 
-    const hasBackup = await this.checkForBackup();
-    if (!hasBackup) {
-      return null;
+    // Get encrypted mnemonic from wallet store
+    const { getMnemonic } = useWalletStore.getState();
+    const mnemonic = await getMnemonic();
+
+    // Create backup using the backup service
+    await this.backupService.createBackup(mnemonic, passphrase);
+  }
+
+  /**
+   * Restore backup with user-provided passphrase
+   */
+  async restoreBackup(passphrase: string): Promise<boolean> {
+    if (!this.backupService) {
+      // Try to initialize again
+      await this.initializeFromAuth();
+      if (!this.backupService) {
+        throw new Error('Backup service not initialized. Please sign in first.');
+      }
     }
 
-    // TODO: Show UI prompt to user
-    // For now, automatically attempt restoration
     try {
-      const keyMaterial = await this.backupService.restoreBackup();
-      console.log('Successfully restored wallet from backup');
-      return keyMaterial;
+      const keyMaterial = await this.backupService.restoreBackup(passphrase);
+
+      if (keyMaterial && keyMaterial.mnemonic) {
+        // Import the restored mnemonic into wallet store
+        const { importFromMnemonic } = useWalletStore.getState();
+        await importFromMnemonic(keyMaterial.mnemonic, 0);
+        return true;
+      }
+
+      return false;
     } catch (error) {
       console.error('Failed to restore backup:', error);
-      return null;
+      throw error;
     }
   }
 
   /**
    * Sync local wallet changes back to cloud backup
    */
-  async syncToBackup(keyMaterial: BackupKeyMaterial): Promise<void> {
+  async syncToBackup(passphrase: string): Promise<void> {
     if (!this.backupService) {
       throw new Error('Backup service not initialized');
     }
 
     try {
-      await this.backupService.syncBackup(keyMaterial);
+      // Get current mnemonic and update backup
+      const { getMnemonic } = useWalletStore.getState();
+      const mnemonic = await getMnemonic();
+      await this.backupService.updateBackup(mnemonic, passphrase);
       console.log('Wallet synced to cloud backup');
     } catch (error) {
       console.error('Failed to sync backup:', error);
@@ -102,30 +140,23 @@ export class ExtensionBackupIntegration {
 
   /**
    * Handle first-time extension setup with backup restoration
+   * Returns true if a backup is available for restoration
    */
   async handleFirstTimeSetup(): Promise<{
-    restoredFromBackup: boolean;
-    keyMaterial?: BackupKeyMaterial;
+    hasBackupAvailable: boolean;
   }> {
     const hasBackup = await this.checkForBackup();
 
     if (hasBackup) {
-      // TODO: Show UI to ask user if they want to restore
-      // For now, attempt automatic restoration
-      try {
-        const keyMaterial = await this.promptRestoreBackup();
-        return {
-          restoredFromBackup: true,
-          keyMaterial: keyMaterial || undefined,
-        };
-      } catch {
-        return { restoredFromBackup: false };
-      }
+      // User should be prompted in the UI to restore
+      // The actual restoration happens when they provide the passphrase
+      console.log('Backup available for restoration');
+      return { hasBackupAvailable: true };
     }
 
-    return { restoredFromBackup: false };
+    return { hasBackupAvailable: false };
   }
 }
 
 // Singleton instance
-export const extensionBackupIntegration = new ExtensionBackupIntegration();
+export const backupIntegration = new ExtensionBackupIntegration();

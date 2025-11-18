@@ -3,17 +3,45 @@
  * Send tokens with DumpSack theme
  */
 
-import React, { useState } from 'react';
-import { useWalletStore } from '../stores/walletStore';
+import React, { useState, useEffect } from 'react';
+
+import { Connection, PublicKey, LAMPORTS_PER_SOL, SystemProgram, Transaction } from '@solana/web3.js';
+
+import { appConfig } from '@dumpsack/shared-utils';
 import { DumpSackTheme } from '@dumpsack/shared-ui';
 
+import { useWalletStore } from '../stores/walletStoreV2';
+
 export function Send() {
-  const { publicKey, balance } = useWalletStore();
+  const { wallets, activeIndex } = useWalletStore();
+  const activeWallet = wallets.find(w => w.index === activeIndex);
+  const publicKey = activeWallet?.publicKey;
+  const [balance, setBalance] = useState(0);
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Fetch real balance from blockchain
+  useEffect(() => {
+    if (!publicKey) return;
+
+    const fetchBalance = async () => {
+      try {
+        const connection = new Connection(appConfig.rpc.primary, 'confirmed');
+        const pubkey = new PublicKey(publicKey);
+        const lamports = await connection.getBalance(pubkey);
+        setBalance(lamports / LAMPORTS_PER_SOL);
+      } catch (err) {
+        console.error('Failed to fetch balance:', err);
+      }
+    };
+
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 10000); // Refresh every 10s
+    return () => clearInterval(interval);
+  }, [publicKey]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,13 +52,64 @@ export function Send() {
     setSuccess('');
 
     try {
-      // TODO: Implement actual transaction sending
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSuccess(`Successfully sent ${amount} GOR to ${recipient.slice(0, 8)}...`);
+      // Validate inputs
+      if (!recipient || !amount) {
+        throw new Error('Please fill in all fields');
+      }
+
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        throw new Error('Invalid amount');
+      }
+
+      if (amountNum > balance) {
+        throw new Error('Insufficient balance');
+      }
+
+      // Build and send transaction
+      const connection = new Connection(appConfig.rpc.primary, 'confirmed');
+      const fromPubkey = new PublicKey(publicKey);
+      const toPubkey = new PublicKey(recipient);
+      const lamports = Math.floor(amountNum * LAMPORTS_PER_SOL);
+
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey,
+          toPubkey,
+          lamports,
+        })
+      );
+
+      // Get recent blockhash
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = fromPubkey;
+
+      // Get mnemonic and derive keypair for signing
+      const { getMnemonic } = useWalletStore.getState();
+      const mnemonic = await getMnemonic();
+
+      // Derive keypair from mnemonic
+      const { deriveWalletAtIndex } = await import('@dumpsack/shared-utils');
+      const { keypair } = deriveWalletAtIndex(mnemonic, activeWallet!.index);
+
+      // Sign and send transaction
+      transaction.sign(keypair);
+      const signature = await connection.sendRawTransaction(transaction.serialize());
+
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, 'confirmed');
+
+      setSuccess(`Successfully sent ${amount} GOR! Signature: ${signature.slice(0, 8)}...`);
       setRecipient('');
       setAmount('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to send transaction');
+
+      // Refresh balance
+      const newBalance = await connection.getBalance(fromPubkey);
+      setBalance(newBalance / LAMPORTS_PER_SOL);
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Failed to send transaction');
     } finally {
       setLoading(false);
     }

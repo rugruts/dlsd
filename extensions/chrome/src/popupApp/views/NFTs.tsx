@@ -4,11 +4,13 @@
  */
 
 import React from 'react';
-import { useWalletStore } from '../stores/walletStore';
+import { useWalletStore } from '../stores/walletStoreV2';
 import { DumpSackTheme } from '@dumpsack/shared-ui';
 
 export function NFTs() {
-  const { publicKey } = useWalletStore();
+  const { wallets, activeIndex } = useWalletStore();
+  const activeWallet = wallets.find(w => w.index === activeIndex);
+  const publicKey = activeWallet?.publicKey;
 
   if (!publicKey) {
     return (

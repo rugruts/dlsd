@@ -4,7 +4,10 @@
  */
 
 import React, { useState } from 'react';
+
 import { DumpSackTheme } from '@dumpsack/shared-ui';
+
+import { backupIntegration } from '../../services/backupIntegration';
 
 interface BackupProps {
   enabled: boolean;
@@ -57,11 +60,17 @@ export function Backup({ enabled }: BackupProps) {
     setMessage('');
 
     try {
-      // TODO: Implement actual backup
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setMessage('Backup created successfully!');
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
+      if (!passphrase || passphrase.length < 8) {
+        throw new Error('Passphrase must be at least 8 characters');
+      }
+
+      // Create backup using backupIntegration service
+      await backupIntegration.createBackup(passphrase);
+      setMessage('Backup created successfully! Your wallet is now backed up to Supabase.');
+      setPassphrase('');
+    } catch (error) {
+      const err = error as Error;
+      setMessage(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -73,11 +82,23 @@ export function Backup({ enabled }: BackupProps) {
     setMessage('');
 
     try {
-      // TODO: Implement actual restore
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setMessage('Wallet restored successfully!');
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
+      if (!passphrase || passphrase.length < 8) {
+        throw new Error('Passphrase must be at least 8 characters');
+      }
+
+      // Restore backup using backupIntegration service
+      const restored = await backupIntegration.restoreBackup(passphrase);
+
+      if (restored) {
+        setMessage('Wallet restored successfully! Please reload the extension.');
+      } else {
+        setMessage('No backup found or incorrect passphrase.');
+      }
+
+      setPassphrase('');
+    } catch (error) {
+      const err = error as Error;
+      setMessage(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }

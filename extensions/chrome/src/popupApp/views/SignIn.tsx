@@ -158,10 +158,129 @@ export function SignIn() {
     );
   }
 
-  // Show forgot password flow (will implement later)
+  // Show forgot password flow
   if (mode === 'password-forgot') {
-    // TODO: Implement ForgotPasswordEmailView
-    return null;
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        backgroundColor: DumpSackTheme.colors.background,
+        padding: DumpSackTheme.spacing.lg,
+      }}>
+        <button
+          onClick={() => setMode('signin')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: DumpSackTheme.colors.textSecondary,
+            fontSize: DumpSackTheme.typography.fontSize.sm,
+            padding: DumpSackTheme.spacing.sm,
+            cursor: 'pointer',
+            alignSelf: 'flex-start',
+            marginBottom: DumpSackTheme.spacing.md,
+          }}
+        >
+          ← Back to Sign In
+        </button>
+
+        <h2 style={{
+          fontSize: DumpSackTheme.typography.fontSize.xl,
+          fontWeight: DumpSackTheme.typography.fontWeight.bold,
+          color: DumpSackTheme.colors.text,
+          marginBottom: DumpSackTheme.spacing.md,
+        }}>
+          Reset Password
+        </h2>
+
+        <p style={{
+          fontSize: DumpSackTheme.typography.fontSize.sm,
+          color: DumpSackTheme.colors.textSecondary,
+          marginBottom: DumpSackTheme.spacing.lg,
+        }}>
+          Enter your email address and we'll send you a link to reset your password.
+        </p>
+
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setLoading(true);
+          setError('');
+
+          try {
+            const supabase = getSupabase();
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+              redirectTo: chrome.runtime.getURL('popup.html'),
+            });
+
+            if (resetError) throw resetError;
+
+            setMessage('Password reset email sent! Check your inbox.');
+            setEmail('');
+          } catch (err) {
+            const error = err as Error;
+            setError(error.message || 'Failed to send reset email');
+          } finally {
+            setLoading(false);
+          }
+        }}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{
+              width: '100%',
+              padding: DumpSackTheme.spacing.md,
+              backgroundColor: DumpSackTheme.colors.surface,
+              border: `1px solid ${DumpSackTheme.colors.border}`,
+              borderRadius: DumpSackTheme.borderRadius.md,
+              color: DumpSackTheme.colors.text,
+              fontSize: DumpSackTheme.typography.fontSize.base,
+              marginBottom: DumpSackTheme.spacing.md,
+            }}
+          />
+
+          {error && (
+            <p style={{
+              color: DumpSackTheme.colors.error,
+              fontSize: DumpSackTheme.typography.fontSize.sm,
+              marginBottom: DumpSackTheme.spacing.sm,
+            }}>
+              {error}
+            </p>
+          )}
+
+          {message && (
+            <p style={{
+              color: DumpSackTheme.colors.success,
+              fontSize: DumpSackTheme.typography.fontSize.sm,
+              marginBottom: DumpSackTheme.spacing.sm,
+            }}>
+              {message}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: DumpSackTheme.spacing.md,
+              backgroundColor: loading ? DumpSackTheme.colors.textMuted : DumpSackTheme.colors.primary,
+              color: DumpSackTheme.colors.text,
+              border: 'none',
+              borderRadius: DumpSackTheme.borderRadius.md,
+              fontSize: DumpSackTheme.typography.fontSize.base,
+              fontWeight: DumpSackTheme.typography.fontWeight.semibold,
+              cursor: loading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {loading ? 'Sending...' : 'Send Reset Link'}
+          </button>
+        </form>
+      </div>
+    );
   }
 
   // Initial sign-in screen with tabs
