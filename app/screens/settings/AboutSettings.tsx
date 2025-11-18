@@ -5,9 +5,10 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, Linking } from 'react-native';
+import Constants from 'expo-constants';
 
 export function AboutSettings() {
-  const appVersion = '1.0.0'; // TODO: Read from app.json
+  const appVersion = Constants.expoConfig?.version || '2.0.0';
 
   const handleOpenLink = (url: string) => {
     Linking.openURL(url).catch((err) => console.error('Failed to open URL:', err));

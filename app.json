@@ -1,5 +1,8 @@
 {
   "expo": {
+    "name": "DumpSack Wallet",
+    "slug": "dumpsack-wallet",
+    "version": "2.0.0",
     "extra": {
       "eas": {
         "projectId": "d669c6d8-2c1f-4521-9d3a-4149484badcb"

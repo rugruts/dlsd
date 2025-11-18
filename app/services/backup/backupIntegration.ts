@@ -1,19 +1,29 @@
 import { Alert } from 'react-native';
-import { BackupService } from './backupService';
-import { BackupKeyMaterial } from '../../../packages/shared-types';
 
-// TODO: Import from auth service
-// import { getCurrentUserId } from '../auth/authService';
+import { BackupKeyMaterial } from '@dumpsack/shared-types';
+import { getSupabase } from '@dumpsack/shared-utils';
+
+import { BackupService } from './backupService';
 
 export class BackupIntegration {
   private backupService: BackupService | null = null;
 
   constructor() {
-    // TODO: Initialize with actual user ID from auth
-    // const userId = getCurrentUserId();
-    // if (userId) {
-    //   this.backupService = new BackupService();
-    // }
+    // Initialize with user ID from Supabase auth
+    this.initializeFromAuth();
+  }
+
+  private async initializeFromAuth() {
+    try {
+      const supabase = getSupabase();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        this.backupService = new BackupService(session.user.id);
+      }
+    } catch (error) {
+      console.error('Failed to initialize backup service:', error);
+    }
   }
 
   /**
@@ -83,9 +93,13 @@ export class BackupIntegration {
   /**
    * Restore wallet from backup
    */
-  async restoreFromBackup(): Promise<BackupKeyMaterial | null> {
+  async restoreFromBackup(passphrase: string): Promise<BackupKeyMaterial | null> {
     if (!this.backupService) {
-      throw new Error('Backup service not initialized');
+      // Try to initialize again
+      await this.initializeFromAuth();
+      if (!this.backupService) {
+        throw new Error('Backup service not initialized. Please sign in first.');
+      }
     }
 
     try {
@@ -95,14 +109,14 @@ export class BackupIntegration {
         return null;
       }
 
-      // TODO: Add biometric/PIN verification before restoration
-      const keyMaterial = await this.backupService.restoreBackup();
+      // Restore with user-provided passphrase
+      const keyMaterial = await this.backupService.restoreBackup(passphrase);
       Alert.alert('Success', 'Wallet restored from cloud backup!');
       return keyMaterial;
 
     } catch (error) {
       console.error('Failed to restore backup:', error);
-      Alert.alert('Error', 'Failed to restore wallet from backup.');
+      Alert.alert('Error', 'Failed to restore wallet from backup. Check your passphrase.');
       return null;
     }
   }
@@ -119,9 +133,11 @@ export class BackupIntegration {
     }
 
     try {
-      const hasBackup = await this.backupService.hasBackup();
-      // TODO: Get last backup date from service
-      return { hasBackup };
+      const metadata = await this.backupService.getBackupMetadata();
+      return {
+        hasBackup: metadata.exists,
+        lastBackupDate: metadata.updatedAt,
+      };
     } catch {
       return { hasBackup: false };
     }
@@ -163,7 +179,7 @@ export class BackupIntegration {
    * Initialize backup service with user ID
    */
   initializeForUser(userId: string): void {
-    this.backupService = createBackupService(userId);
+    this.backupService = new BackupService(userId);
   }
 }
 
