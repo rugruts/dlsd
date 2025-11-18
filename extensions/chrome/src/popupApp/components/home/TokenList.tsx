@@ -1,34 +1,17 @@
 /**
  * TokenList Component - Phantom-grade token list (Extension)
- * Compact, scrollable list of tokens with prices
+ * Platform-specific implementation using shared logic
  */
 
 import React from 'react';
-import { DumpSackTheme } from '@dumpsack/shared-ui';
+import { DumpSackTheme, useTokenList, TokenListProps, TokenItemData } from '@dumpsack/shared-ui';
 
-interface Token {
-  mint: string;
-  symbol: string;
-  name: string;
-  balance: number;
-  usdValue?: number;
-  change24h?: number;
-  icon?: string;
-}
-
-interface TokenListProps {
-  tokens: Token[];
-  loading?: boolean;
-  onTokenPress: (token: Token) => void;
-}
-
-function TokenListItem({ item, onPress }: { item: Token; onPress: () => void }) {
-  const changeColor = item.change24h && item.change24h >= 0 ? DumpSackTheme.colors.success : DumpSackTheme.colors.error;
-  const changeSign = item.change24h && item.change24h >= 0 ? '+' : '';
+function TokenListItem({ item }: { item: TokenItemData }) {
+  const changeColor = item.change?.color === 'success' ? DumpSackTheme.colors.success : DumpSackTheme.colors.error;
 
   return (
     <button
-      onClick={onPress}
+      onClick={item.onPress}
       style={{
         width: '100%',
         display: 'flex',
@@ -61,7 +44,7 @@ function TokenListItem({ item, onPress }: { item: Token; onPress: () => void }) 
             fontSize: DumpSackTheme.typography.fontSize.xs,
             fontWeight: DumpSackTheme.typography.fontWeight.bold,
           }}>
-            {item.symbol.slice(0, 2)}
+            {item.iconFallback}
           </span>
         )}
       </div>
@@ -86,7 +69,7 @@ function TokenListItem({ item, onPress }: { item: Token; onPress: () => void }) 
           fontWeight: DumpSackTheme.typography.fontWeight.semibold,
           fontSize: DumpSackTheme.typography.fontSize.base,
         }}>
-          {item.balance.toFixed(4)}
+          {item.balance}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: DumpSackTheme.spacing.xs, justifyContent: 'flex-end' }}>
           {item.usdValue && (
@@ -94,16 +77,16 @@ function TokenListItem({ item, onPress }: { item: Token; onPress: () => void }) 
               color: DumpSackTheme.colors.textSecondary,
               fontSize: DumpSackTheme.typography.fontSize.xs,
             }}>
-              ${item.usdValue.toFixed(2)}
+              {item.usdValue}
             </span>
           )}
-          {item.change24h !== undefined && (
+          {item.change && (
             <span style={{
               color: changeColor,
               fontSize: DumpSackTheme.typography.fontSize.xs,
               fontWeight: DumpSackTheme.typography.fontWeight.semibold,
             }}>
-              {changeSign}{item.change24h.toFixed(1)}%
+              {item.change.text}
             </span>
           )}
         </div>
@@ -146,8 +129,10 @@ function SkeletonItem() {
   );
 }
 
-export function TokenList({ tokens, loading = false, onTokenPress }: TokenListProps) {
-  if (loading && tokens.length === 0) {
+export function TokenList(props: TokenListProps) {
+  const data = useTokenList(props);
+
+  if (data.loading && data.isEmpty) {
     return (
       <div style={{ flex: 1, backgroundColor: DumpSackTheme.colors.background }}>
         <SkeletonItem />
@@ -159,7 +144,7 @@ export function TokenList({ tokens, loading = false, onTokenPress }: TokenListPr
     );
   }
 
-  if (tokens.length === 0) {
+  if (data.isEmpty) {
     return (
       <div style={{
         flex: 1,
@@ -189,10 +174,13 @@ export function TokenList({ tokens, loading = false, onTokenPress }: TokenListPr
       overflowY: 'auto',
       backgroundColor: DumpSackTheme.colors.background,
     }}>
-      {tokens.map((token) => (
-        <TokenListItem key={token.mint} item={token} onPress={() => onTokenPress(token)} />
+      {data.tokens.map((token) => (
+        <TokenListItem key={token.mint} item={token} />
       ))}
     </div>
   );
 }
+
+// Re-export props type
+export type { TokenListProps };
 

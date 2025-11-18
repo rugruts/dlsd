@@ -1,27 +1,15 @@
 /**
  * BalanceCard Component - Phantom-grade balance display (Extension)
- * Shows: Big GOR balance, USD value, % change
+ * Platform-specific implementation using shared logic
  * Height: 140px fixed
  */
 
 import React from 'react';
-import { DumpSackTheme } from '@dumpsack/shared-ui';
+import { DumpSackTheme, useBalanceCard, BalanceCardProps } from '@dumpsack/shared-ui';
 
-interface BalanceCardProps {
-  balanceGOR: string;
-  balanceUSD: string;
-  change24h?: number;
-  loading?: boolean;
-}
-
-export function BalanceCard({
-  balanceGOR,
-  balanceUSD,
-  change24h,
-  loading = false,
-}: BalanceCardProps) {
-  const changeColor = change24h && change24h >= 0 ? DumpSackTheme.colors.success : DumpSackTheme.colors.error;
-  const changeSign = change24h && change24h >= 0 ? '+' : '';
+export function BalanceCard(props: BalanceCardProps) {
+  const data = useBalanceCard(props);
+  const changeColor = data.change?.color === 'success' ? DumpSackTheme.colors.success : DumpSackTheme.colors.error;
 
   return (
     <div style={{
@@ -33,7 +21,7 @@ export function BalanceCard({
       alignItems: 'center',
       backgroundColor: DumpSackTheme.colors.background,
     }}>
-      {loading ? (
+      {data.loading ? (
         <div style={{ textAlign: 'center' }}>
           <div style={{
             height: '48px',
@@ -58,7 +46,7 @@ export function BalanceCard({
             color: DumpSackTheme.colors.text,
             marginBottom: '4px',
           }}>
-            {balanceGOR}
+            {data.balance.amount}
           </div>
           <div style={{
             fontSize: DumpSackTheme.typography.fontSize.xs,
@@ -66,7 +54,7 @@ export function BalanceCard({
             color: DumpSackTheme.colors.textSecondary,
             marginBottom: '4px',
           }}>
-            GOR
+            {data.balance.currency}
           </div>
 
           {/* USD Value + Change */}
@@ -76,15 +64,15 @@ export function BalanceCard({
               fontWeight: DumpSackTheme.typography.fontWeight.medium,
               color: DumpSackTheme.colors.textSecondary,
             }}>
-              {balanceUSD}
+              {data.usd.amount}
             </span>
-            {change24h !== undefined && (
+            {data.change && (
               <span style={{
                 fontSize: DumpSackTheme.typography.fontSize.sm,
                 fontWeight: DumpSackTheme.typography.fontWeight.semibold,
                 color: changeColor,
               }}>
-                {changeSign}{change24h.toFixed(2)}%
+                {data.change.text}
               </span>
             )}
           </div>
@@ -93,4 +81,7 @@ export function BalanceCard({
     </div>
   );
 }
+
+// Re-export props type
+export type { BalanceCardProps };
 

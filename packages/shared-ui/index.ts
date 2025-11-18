@@ -30,6 +30,19 @@ export type { DSHeaderProps } from './components/DSHeader';
 export { DSModal } from './components/DSModal';
 export type { DSModalProps } from './components/DSModal';
 
+// Home Components (Platform-agnostic)
+export { useTopBar } from './components/home/TopBar';
+export type { TopBarProps, TopBarData } from './components/home/TopBar';
+
+export { useBalanceCard } from './components/home/BalanceCard';
+export type { BalanceCardProps, BalanceCardData } from './components/home/BalanceCard';
+
+export { useActionRow } from './components/home/ActionRow';
+export type { ActionRowProps, ActionRowData, Action } from './components/home/ActionRow';
+
+export { useTokenList } from './components/home/TokenList';
+export type { TokenListProps, TokenListData, Token, TokenItemData } from './components/home/TokenList';
+
 // Import web styles to create combined export
 import { DSButtonWebStyles as ButtonStyles } from './components/DSButton';
 import { DSCardWebStyles as CardStyles } from './components/DSCard';

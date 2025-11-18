@@ -1,19 +1,13 @@
 /**
  * ActionRow Component - Phantom-grade action buttons (Extension)
- * 4 equal-width buttons: Receive | Send | Swap | Backup
+ * Platform-specific implementation using shared logic
  * Height: 90px fixed
  */
 
 import React from 'react';
-import { DumpSackTheme } from '@dumpsack/shared-ui';
+import { DumpSackTheme, useActionRow, ActionRowProps, Action } from '@dumpsack/shared-ui';
 
-interface ActionButtonProps {
-  icon: string;
-  label: string;
-  onPress: () => void;
-}
-
-function ActionButton({ icon, label, onPress }: ActionButtonProps) {
+function ActionButton({ icon, label, onPress }: Action) {
   return (
     <button
       onClick={onPress}
@@ -50,19 +44,9 @@ function ActionButton({ icon, label, onPress }: ActionButtonProps) {
   );
 }
 
-interface ActionRowProps {
-  onReceive: () => void;
-  onSend: () => void;
-  onSwap: () => void;
-  onBackup: () => void;
-}
+export function ActionRow(props: ActionRowProps) {
+  const data = useActionRow(props);
 
-export function ActionRow({
-  onReceive,
-  onSend,
-  onSwap,
-  onBackup,
-}: ActionRowProps) {
   return (
     <div style={{
       height: '90px',
@@ -73,11 +57,13 @@ export function ActionRow({
       backgroundColor: DumpSackTheme.colors.background,
       borderBottom: `${DumpSackTheme.borderWidth.normal}px solid ${DumpSackTheme.colors.border}`,
     }}>
-      <ActionButton icon="📥" label="Receive" onPress={onReceive} />
-      <ActionButton icon="📤" label="Send" onPress={onSend} />
-      <ActionButton icon="🔄" label="Swap" onPress={onSwap} />
-      <ActionButton icon="💾" label="Backup" onPress={onBackup} />
+      {data.actions.map((action, index) => (
+        <ActionButton key={index} {...action} />
+      ))}
     </div>
   );
 }
+
+// Re-export props type
+export type { ActionRowProps };
 

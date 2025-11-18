@@ -1,28 +1,15 @@
 /**
  * TopBar Component - Phantom-grade compact header (Extension)
- * Shows: Logo, Account switcher, Network, Settings
+ * Platform-specific implementation using shared logic
  * Height: 60px fixed
  */
 
 import React from 'react';
-import { DumpSackTheme } from '@dumpsack/shared-ui';
-import { truncatePublicKey } from '@dumpsack/shared-types';
+import { DumpSackTheme, useTopBar, TopBarProps } from '@dumpsack/shared-ui';
 
-interface TopBarProps {
-  walletName: string;
-  walletAddress: string;
-  network: string;
-  onAccountPress: () => void;
-  onSettingsPress: () => void;
-}
+export function TopBar(props: TopBarProps) {
+  const data = useTopBar(props);
 
-export function TopBar({
-  walletName,
-  walletAddress,
-  network,
-  onAccountPress,
-  onSettingsPress,
-}: TopBarProps) {
   return (
     <div style={{
       height: '60px',
@@ -48,18 +35,18 @@ export function TopBar({
             color: DumpSackTheme.colors.background,
             fontWeight: DumpSackTheme.typography.fontWeight.bold,
             fontSize: DumpSackTheme.typography.fontSize.sm,
-          }}>DS</span>
+          }}>{data.logo.text}</span>
         </div>
         <span style={{
           color: DumpSackTheme.colors.text,
           fontWeight: DumpSackTheme.typography.fontWeight.semibold,
           fontSize: DumpSackTheme.typography.fontSize.base,
-        }}>DumpSack</span>
+        }}>{data.logo.label}</span>
       </div>
 
       {/* Account Switcher */}
       <button
-        onClick={onAccountPress}
+        onClick={data.account.onPress}
         style={{
           flex: 1,
           margin: `0 ${DumpSackTheme.spacing.md}px`,
@@ -78,11 +65,11 @@ export function TopBar({
             color: DumpSackTheme.colors.text,
             fontWeight: DumpSackTheme.typography.fontWeight.semibold,
             fontSize: DumpSackTheme.typography.fontSize.sm,
-          }}>{walletName}</div>
+          }}>{data.account.name}</div>
           <div style={{
             color: DumpSackTheme.colors.textSecondary,
             fontSize: DumpSackTheme.typography.fontSize.xs,
-          }}>{truncatePublicKey(walletAddress)}</div>
+          }}>{data.account.address}</div>
         </div>
         <span style={{ color: DumpSackTheme.colors.textSecondary, marginLeft: DumpSackTheme.spacing.xs }}>▼</span>
       </button>
@@ -98,10 +85,10 @@ export function TopBar({
             color: DumpSackTheme.colors.success,
             fontSize: DumpSackTheme.typography.fontSize.xs,
             fontWeight: DumpSackTheme.typography.fontWeight.semibold,
-          }}>{network}</span>
+          }}>{data.network.label}</span>
         </div>
         <button
-          onClick={onSettingsPress}
+          onClick={data.settings.onPress}
           style={{
             padding: DumpSackTheme.spacing.xs,
             backgroundColor: 'transparent',
@@ -109,9 +96,12 @@ export function TopBar({
             cursor: 'pointer',
             fontSize: DumpSackTheme.typography.fontSize.lg,
           }}
-        >⚙️</button>
+        >{data.settings.icon}</button>
       </div>
     </div>
   );
 }
+
+// Re-export props type
+export type { TopBarProps };
 

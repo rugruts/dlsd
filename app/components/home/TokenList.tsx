@@ -1,35 +1,25 @@
 /**
- * TokenList Component - Phantom-grade token list
- * Compact, scrollable list of tokens with prices
+ * TokenList Component - Phantom-grade token list (Mobile)
+ * Platform-specific implementation using shared logic
  */
 
 import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image } from 'react-native';
+import { useTokenList, TokenListProps, TokenItemData } from '@dumpsack/shared-ui';
 
-import { TokenItem } from '../../types/wallet';
-
-interface TokenListProps {
-  tokens: TokenItem[];
-  loading?: boolean;
-  onTokenPress: (token: TokenItem) => void;
-}
-
-function TokenListItem({ item, onPress }: { item: TokenItem; onPress: () => void }) {
-  const changeColor = item.change24h && item.change24h >= 0 ? 'text-success' : 'text-error';
-  const changeSign = item.change24h && item.change24h >= 0 ? '+' : '';
-
+function TokenListItem({ item }: { item: TokenItemData }) {
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={item.onPress}
       className="flex-row items-center px-4 py-3 border-b border-border/50"
     >
       {/* Token Icon */}
       <View className="w-10 h-10 bg-surface rounded-full items-center justify-center mr-3">
         {item.icon ? (
-          <Image source={item.icon} className="w-10 h-10 rounded-full" />
+          <Image source={{ uri: item.icon }} className="w-10 h-10 rounded-full" />
         ) : (
           <Text className="text-textSecondary text-xs font-bold">
-            {item.symbol.slice(0, 2)}
+            {item.iconFallback}
           </Text>
         )}
       </View>
@@ -43,17 +33,17 @@ function TokenListItem({ item, onPress }: { item: TokenItem; onPress: () => void
       {/* Balance + USD */}
       <View className="items-end">
         <Text className="text-text font-semibold text-base">
-          {item.balance.toFixed(4)}
+          {item.balance}
         </Text>
         <View className="flex-row items-center gap-1">
           {item.usdValue && (
             <Text className="text-textSecondary text-xs">
-              ${item.usdValue.toFixed(2)}
+              {item.usdValue}
             </Text>
           )}
-          {item.change24h !== undefined && (
-            <Text className={`${changeColor} text-xs font-semibold`}>
-              {changeSign}{item.change24h.toFixed(1)}%
+          {item.change && (
+            <Text className={`text-${item.change.color} text-xs font-semibold`}>
+              {item.change.text}
             </Text>
           )}
         </View>
@@ -78,8 +68,10 @@ function SkeletonItem() {
   );
 }
 
-export function TokenList({ tokens, loading = false, onTokenPress }: TokenListProps) {
-  if (loading && tokens.length === 0) {
+export function TokenList(props: TokenListProps) {
+  const data = useTokenList(props);
+
+  if (data.loading && data.isEmpty) {
     return (
       <View className="flex-1 bg-background">
         <SkeletonItem />
@@ -91,7 +83,7 @@ export function TokenList({ tokens, loading = false, onTokenPress }: TokenListPr
     );
   }
 
-  if (tokens.length === 0) {
+  if (data.isEmpty) {
     return (
       <View className="flex-1 items-center justify-center py-12 bg-background">
         <Text className="text-textSecondary text-base">No tokens found</Text>
@@ -104,14 +96,15 @@ export function TokenList({ tokens, loading = false, onTokenPress }: TokenListPr
 
   return (
     <FlatList
-      data={tokens}
-      renderItem={({ item }) => (
-        <TokenListItem item={item} onPress={() => onTokenPress(item)} />
-      )}
+      data={data.tokens}
+      renderItem={({ item }) => <TokenListItem item={item} />}
       keyExtractor={(item) => item.mint}
       className="flex-1 bg-background"
       showsVerticalScrollIndicator={false}
     />
   );
 }
+
+// Re-export props type
+export type { TokenListProps };
 
