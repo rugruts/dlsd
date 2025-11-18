@@ -4,9 +4,11 @@ import {
   Transaction,
   SystemProgram,
   sendAndConfirmRawTransaction,
+  GBA_TOKEN_PROGRAM_ID,
+  GBA_ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '@dumpsack/shared-utils';
 import { appConfig } from '@dumpsack/shared-utils';
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } from '@solana/spl-token';
+import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } from '@solana/spl-token';
 
 export interface SendGORParams {
   fromPubkey: PublicKey;
@@ -55,9 +57,21 @@ export async function buildSendSPL(params: SendSPLParams): Promise<{
 
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
 
-  // Get associated token accounts
-  const fromATA = await getAssociatedTokenAddress(mint, fromPubkey);
-  const toATA = await getAssociatedTokenAddress(mint, toPubkey);
+  // Get associated token accounts using GBA program IDs
+  const fromATA = await getAssociatedTokenAddress(
+    mint,
+    fromPubkey,
+    false,
+    GBA_TOKEN_PROGRAM_ID,
+    GBA_ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+  const toATA = await getAssociatedTokenAddress(
+    mint,
+    toPubkey,
+    false,
+    GBA_TOKEN_PROGRAM_ID,
+    GBA_ASSOCIATED_TOKEN_PROGRAM_ID
+  );
 
   const transaction = new Transaction({
     recentBlockhash: blockhash,
@@ -73,18 +87,22 @@ export async function buildSendSPL(params: SendSPLParams): Promise<{
         fromPubkey, // payer
         toATA, // ata
         toPubkey, // owner
-        mint // mint
+        mint, // mint
+        GBA_TOKEN_PROGRAM_ID,
+        GBA_ASSOCIATED_TOKEN_PROGRAM_ID
       )
     );
   }
 
-  // Add transfer instruction
+  // Add transfer instruction using GBA token program
   transaction.add(
     createTransferInstruction(
       fromATA, // source
       toATA, // destination
       fromPubkey, // owner
-      amount // amount
+      amount, // amount
+      [], // multiSigners
+      GBA_TOKEN_PROGRAM_ID
     )
   );
 

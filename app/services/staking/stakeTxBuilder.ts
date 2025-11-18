@@ -1,5 +1,5 @@
 import { PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
-import { appConfig } from '@dumpsack/shared-utils';
+import { appConfig, GBA_STAKE_PROGRAM_ID } from '@dumpsack/shared-utils';
 import { StakeTransactionContext } from './stakingTypes';
 
 export async function buildCreateAndDelegate({
@@ -64,14 +64,14 @@ export async function buildCreateAndDelegate({
     feePayer: ownerPubkey,
   });
 
-  // Create stake account
+  // Create stake account using GBA stake program ID
   transaction.add(
     SystemProgram.createAccount({
       fromPubkey: ownerPubkey,
       newAccountPubkey: stakeAccountPubkey,
       lamports: amountLamports,
       space: 200, // Stake account size
-      programId: new PublicKey('Stake11111111111111111111111111111111111111'),
+      programId: GBA_STAKE_PROGRAM_ID,
     })
   );
 

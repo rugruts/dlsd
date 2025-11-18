@@ -1,4 +1,4 @@
-import { Connection, PublicKey } from '@dumpsack/shared-utils';
+import { Connection, PublicKey, GBA_TOKEN_PROGRAM_ID } from '@dumpsack/shared-utils';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { appConfig } from '@dumpsack/shared-utils';
 import { TokenItem } from '../../types/wallet';
@@ -17,7 +17,7 @@ export async function getTokenAccounts(pubkey: PublicKey): Promise<any[]> {
   const connection = new Connection(appConfig.rpc.primary, 'confirmed');
   try {
     const accounts = await connection.getParsedTokenAccountsByOwner(pubkey, {
-      programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'), // SPL Token Program
+      programId: GBA_TOKEN_PROGRAM_ID, // Use GBA token program ID
     });
     return accounts.value;
   } catch (error) {

@@ -7,12 +7,14 @@ import {
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import {
-  TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
   createTransferInstruction
 } from '@solana/spl-token';
+import {
+  GBA_TOKEN_PROGRAM_ID,
+  GBA_ASSOCIATED_TOKEN_PROGRAM_ID
+} from '@dumpsack/shared-utils';
 import { createRpcClient } from '../blockchain/rpcClient';
 import { walletService } from '../wallet/walletService';
 import { TransferTxParams, TransactionSummary, FeeEstimate } from '../blockchain/models';
@@ -56,11 +58,23 @@ export class TransactionService {
     mint: PublicKey,
     amount: bigint
   ): Promise<void> {
-    // Get sender's ATA
-    const senderATA = await getAssociatedTokenAddress(mint, from);
+    // Get sender's ATA using GBA token program
+    const senderATA = await getAssociatedTokenAddress(
+      mint,
+      from,
+      false, // allowOwnerOffCurve
+      GBA_TOKEN_PROGRAM_ID,
+      GBA_ASSOCIATED_TOKEN_PROGRAM_ID
+    );
 
-    // Get receiver's ATA
-    const receiverATA = await getAssociatedTokenAddress(mint, to);
+    // Get receiver's ATA using GBA token program
+    const receiverATA = await getAssociatedTokenAddress(
+      mint,
+      to,
+      false, // allowOwnerOffCurve
+      GBA_TOKEN_PROGRAM_ID,
+      GBA_ASSOCIATED_TOKEN_PROGRAM_ID
+    );
 
     // Check if receiver ATA exists, if not, create it
     const accountInfo = await this.rpcClient.getAccountInfo(receiverATA);
@@ -70,12 +84,14 @@ export class TransactionService {
           from, // payer
           receiverATA, // ata
           to, // owner
-          mint // mint
+          mint, // mint
+          GBA_TOKEN_PROGRAM_ID,
+          GBA_ASSOCIATED_TOKEN_PROGRAM_ID
         )
       );
     }
 
-    // Add transfer instruction
+    // Add transfer instruction using GBA token program
     tx.add(
       createTransferInstruction(
         senderATA, // source
@@ -83,7 +99,7 @@ export class TransactionService {
         from, // owner
         amount, // amount
         [], // multiSigners
-        TOKEN_PROGRAM_ID // programId
+        GBA_TOKEN_PROGRAM_ID // programId
       )
     );
   }
