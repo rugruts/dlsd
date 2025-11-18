@@ -1,193 +1,104 @@
-import React, { useEffect } from 'react';
-import {
-  View,
-  Text,
-  SafeAreaView,
-  FlatList,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  Image,
-} from 'react-native';
+/**
+ * DashboardScreen - Phantom-grade home screen
+ * ZERO scrolling needed for core actions
+ * Layout: TopBar (60px) + BalanceCard (140px) + ActionRow (90px) + TokenList (scrollable)
+ */
+
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView, RefreshControl, ScrollView } from 'react-native';
+
 import { useAppNavigation } from '../../navigation/hooks';
-import { useAuthStore } from '../../state/authStore';
 import { useWalletStore } from '../../state/walletStoreV2';
-import { Button } from '../../components/Button';
-import { TokenItem, NftItem } from '../../types/wallet';
+import { PriceService } from '../../services/blockchain/priceService';
+import { TopBar } from '../../components/home/TopBar';
+import { BalanceCard } from '../../components/home/BalanceCard';
+import { ActionRow } from '../../components/home/ActionRow';
+import { TokenList } from '../../components/home/TokenList';
+import { TokenItem } from '../../types/wallet';
 
 export default function DashboardScreen() {
   const navigation = useAppNavigation();
-  const { alias, publicKey } = useAuthStore();
-  const { balance, tokens, nfts, loading, error, refresh } = useWalletStore();
-  const [refreshing, setRefreshing] = React.useState(false);
+  const { activeWallet, balance, tokens, loading, refresh } = useWalletStore();
+  const [refreshing, setRefreshing] = useState(false);
+  const [priceData, setPriceData] = useState<{ price: number; change24h: number } | null>(null);
 
   useEffect(() => {
     // Initial load
     refresh();
+    loadPrice();
   }, []);
+
+  const loadPrice = async () => {
+    try {
+      const price = await PriceService.getPrice('GOR');
+      setPriceData(price ? { price: price.price, change24h: price.change24h } : null);
+    } catch (error) {
+      console.error('Failed to load price:', error);
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), loadPrice()]);
     setRefreshing(false);
   };
 
-  const renderTokenItem = ({ item }: { item: TokenItem }) => (
-    <TouchableOpacity
-      className="flex-row items-center p-4 bg-surface rounded-lg mb-2"
-      onPress={() => navigation.navigate('TokenDetails', { token: item })}
-    >
-      {item.icon && <Image source={item.icon} className="w-8 h-8 mr-3" />}
-      <View className="flex-1">
-        <Text className="text-text font-semibold">{item.symbol}</Text>
-        <Text className="text-textSecondary text-sm">{item.name}</Text>
-      </View>
-      <View className="items-end">
-        <Text className="text-text font-semibold">{item.balance.toFixed(4)}</Text>
-        {item.usdValue && (
-          <Text className="text-textSecondary text-sm">${item.usdValue.toFixed(2)}</Text>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+  // Format balance for display
+  const formatBalance = (bal: number | null) => {
+    if (!bal) return '0.0000';
+    return bal.toFixed(4);
+  };
 
-  const renderNftItem = ({ item }: { item: NftItem }) => (
-    <TouchableOpacity
-      className="w-24 h-24 mr-3 rounded-lg overflow-hidden"
-      onPress={() => navigation.navigate('NFTDetail', { nft: item })}
-    >
-      {item.image ? (
-        <Image source={{ uri: item.image }} className="w-full h-full" />
-      ) : (
-        <View className="w-full h-full bg-surface items-center justify-center">
-          <Text className="text-textSecondary text-xs">NFT</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+  const formatUSD = (bal: number | null) => {
+    if (!bal || !priceData) return '$0.00';
+    return `$${(bal * priceData.price).toFixed(2)}`;
+  };
 
-  const SkeletonLoader = ({ className }: { className: string }) => (
-    <View className={`${className} bg-gray-300 animate-pulse rounded`} />
-  );
+  const handleTokenPress = (token: TokenItem) => {
+    navigation.navigate('TokenDetails', { token });
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background">
+      {/* Fixed TopBar - 60px */}
+      <TopBar
+        walletName={activeWallet?.name || 'Main'}
+        walletAddress={activeWallet?.publicKey || ''}
+        network="GOR"
+        onAccountPress={() => navigation.navigate('ManageWallets')}
+        onSettingsPress={() => navigation.navigate('SettingsMain')}
+      />
+
+      {/* Scrollable Content */}
       <ScrollView
         className="flex-1"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View className="px-6 py-4">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-text text-lg font-semibold">
-                @{alias || 'Anonymous'}
-              </Text>
-              <Text className="text-textSecondary text-sm">
-                {publicKey ? `${publicKey.slice(0, 8)}...${publicKey.slice(-8)}` : ''}
-              </Text>
-            </View>
-            <Button
-              title="Receive"
-              onPress={() => navigation.navigate('Receive')}
-              variant="secondary"
-              className="px-4 py-2"
-            />
-          </View>
-        </View>
+        {/* Fixed BalanceCard - 140px */}
+        <BalanceCard
+          balanceGOR={formatBalance(balance)}
+          balanceUSD={formatUSD(balance)}
+          change24h={priceData?.change24h}
+          loading={loading && !balance}
+        />
 
-        {/* Balance Card */}
-        <View className="mx-6 mb-6">
-          <View className="bg-surface rounded-xl p-6">
-            {loading && !balance ? (
-              <SkeletonLoader className="h-8 w-32 mb-2" />
-            ) : (
-              <>
-                <Text className="text-textSecondary text-sm mb-1">Total Balance</Text>
-                <Text className="text-text text-3xl font-bold">
-                  {balance ? `${balance.toFixed(4)} GOR` : '--'}
-                </Text>
-                <Text className="text-textSecondary text-lg mt-1">
-                  ${balance ? (balance * 0.01).toFixed(2) : '--'}
-                </Text>
-              </>
-            )}
-          </View>
-        </View>
+        {/* Fixed ActionRow - 90px */}
+        <ActionRow
+          onReceive={() => navigation.navigate('Receive')}
+          onSend={() => navigation.navigate('SendSelect')}
+          onSwap={() => navigation.navigate('SwapScreen')}
+          onBackup={() => navigation.navigate('BackupDashboard')}
+        />
 
-        {/* Error Banner */}
-        {error && (
-          <View className="mx-6 mb-4 bg-yellow-100 border border-yellow-300 rounded-lg p-4">
-            <Text className="text-yellow-800 text-sm">{error}</Text>
-            <TouchableOpacity onPress={refresh} className="mt-2">
-              <Text className="text-yellow-600 font-semibold">Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Token List */}
-        <View className="mx-6 mb-6">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-text text-xl font-semibold">Tokens</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('TokensScreen')}>
-              <Text className="text-primary">See All</Text>
-            </TouchableOpacity>
-          </View>
-
-          {loading && tokens.length === 0 ? (
-            <View className="space-y-2">
-              <SkeletonLoader className="h-16 w-full" />
-              <SkeletonLoader className="h-16 w-full" />
-              <SkeletonLoader className="h-16 w-full" />
-            </View>
-          ) : tokens.length > 0 ? (
-            <FlatList
-              data={tokens.slice(0, 5)} // Show first 5
-              renderItem={renderTokenItem}
-              keyExtractor={(item) => item.mint}
-              scrollEnabled={false}
-            />
-          ) : (
-            <View className="bg-surface rounded-lg p-8 items-center">
-              <Text className="text-textSecondary">No tokens found</Text>
-            </View>
-          )}
-        </View>
-
-        {/* NFT Preview */}
-        <View className="mx-6 mb-6">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-text text-xl font-semibold">NFTs</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('NFTGallery')}>
-              <Text className="text-primary">See All</Text>
-            </TouchableOpacity>
-          </View>
-
-          {loading && nfts.length === 0 ? (
-            <View className="flex-row space-x-3">
-              <SkeletonLoader className="w-24 h-24" />
-              <SkeletonLoader className="w-24 h-24" />
-              <SkeletonLoader className="w-24 h-24" />
-            </View>
-          ) : nfts.length > 0 ? (
-            <FlatList
-              data={nfts.slice(0, 10)} // Show first 10
-              renderItem={renderNftItem}
-              keyExtractor={(item) => item.mint}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            />
-          ) : (
-            <View className="bg-surface rounded-lg p-8 items-center">
-              <Text className="text-textSecondary">No NFTs yet</Text>
-              <Text className="text-textSecondary text-sm mt-1">
-                Your NFTs will appear here
-              </Text>
-            </View>
-          )}
-        </View>
+        {/* Scrollable TokenList */}
+        <TokenList
+          tokens={tokens}
+          loading={loading}
+          onTokenPress={handleTokenPress}
+        />
       </ScrollView>
     </SafeAreaView>
   );
