@@ -1,20 +1,28 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-// import QRCode from 'react-native-qrcode-svg'; // TODO: Install and import
+import { View } from 'react-native';
+import QRCodeSVG from 'react-native-qrcode-svg';
 
 interface QRCodeProps {
   value: string;
   size?: number;
+  backgroundColor?: string;
+  color?: string;
 }
 
-export function QRCode({ value, size = 200 }: QRCodeProps) {
-  // TODO: Replace with actual QR code library
+export function QRCode({
+  value,
+  size = 200,
+  backgroundColor = '#FFFFFF',
+  color = '#000000'
+}: QRCodeProps) {
   return (
-    <View
-      className="items-center justify-center border-2 border-textSecondary"
-      style={{ width: size, height: size }}
-    >
-      <Text className="text-textSecondary text-xs">QR: {value.slice(0, 20)}...</Text>
+    <View className="items-center justify-center">
+      <QRCodeSVG
+        value={value}
+        size={size}
+        backgroundColor={backgroundColor}
+        color={color}
+      />
     </View>
   );
 }
