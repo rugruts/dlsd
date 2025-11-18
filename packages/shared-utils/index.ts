@@ -262,6 +262,9 @@ export * from './config/swapConfig';
 // Export Crypto Service (PBKDF2 + AES-GCM encryption)
 export * as CryptoService from './cryptoService';
 
+// Export Swap Module (provider-based swap architecture)
+export * from './swap';
+
 // Export Multi-Wallet utilities
 export * from './multiWallet';
 
