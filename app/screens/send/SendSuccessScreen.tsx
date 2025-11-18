@@ -9,8 +9,8 @@ export default function SendSuccessScreen() {
   const { signature } = params;
 
   const handleViewOnExplorer = () => {
-    // TODO: Open explorer with signature
-    const explorerUrl = `https://explorer.solana.com/tx/${signature}`;
+    // Open Trashscan explorer for Gorbagana network
+    const explorerUrl = `https://trashscan.xyz/tx/${signature}`;
     Linking.openURL(explorerUrl);
   };
 
