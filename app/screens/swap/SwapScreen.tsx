@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, SafeAreaView, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
+
 import { useAppNavigation } from '../../navigation/hooks';
 import { useWalletStore } from '../../state/walletStoreV2';
 import { useSwapStore } from '../../state/swapStore';
 import { Button } from '../../components/Button';
+import { TokenSelectorModal } from '../../components/TokenSelectorModal';
 import { TokenItem } from '../../types/wallet';
 import { parseSwapAmount, calculateMaxSwapAmount, formatPriceImpact, formatSwapFee } from '../../utils/swapAmounts';
 
@@ -24,6 +26,8 @@ export default function SwapScreen() {
   const [inputToken, setInputToken] = useState<TokenItem>(GOR_TOKEN);
   const [outputToken, setOutputToken] = useState<TokenItem | null>(null);
   const [amount, setAmount] = useState('');
+  const [showInputTokenModal, setShowInputTokenModal] = useState(false);
+  const [showOutputTokenModal, setShowOutputTokenModal] = useState(false);
 
   const availableTokens = [GOR_TOKEN, ...tokens.filter(t => t.mint !== GOR_TOKEN.mint)];
 
@@ -64,15 +68,12 @@ export default function SwapScreen() {
 
   const renderTokenSelector = (
     token: TokenItem | null,
-    onSelect: (token: TokenItem) => void,
+    onPress: () => void,
     placeholder: string
   ) => (
     <TouchableOpacity
       className="flex-row items-center justify-between p-4 bg-surface rounded-lg"
-      onPress={() => {
-        // TODO: Open token select modal
-        Alert.alert('Token Selection', 'Token selector modal not implemented yet');
-      }}
+      onPress={onPress}
     >
       {token ? (
         <View className="flex-row items-center">
@@ -102,7 +103,7 @@ export default function SwapScreen() {
         {/* Input Token */}
         <View className="mb-4">
           <Text className="text-textSecondary text-sm mb-2">From</Text>
-          {renderTokenSelector(inputToken, setInputToken, 'Select input token')}
+          {renderTokenSelector(inputToken, () => setShowInputTokenModal(true), 'Select input token')}
         </View>
 
         {/* Amount Input */}
@@ -132,7 +133,7 @@ export default function SwapScreen() {
         {/* Output Token */}
         <View className="mb-6">
           <Text className="text-textSecondary text-sm mb-2">To</Text>
-          {renderTokenSelector(outputToken, setOutputToken, 'Select output token')}
+          {renderTokenSelector(outputToken, () => setShowOutputTokenModal(true), 'Select output token')}
         </View>
 
         {/* Get Quote Button */}
@@ -187,6 +188,29 @@ export default function SwapScreen() {
           />
         )}
       </View>
+
+      {/* Token Selector Modals */}
+      <TokenSelectorModal
+        visible={showInputTokenModal}
+        tokens={availableTokens}
+        selectedToken={inputToken}
+        onSelect={(token) => {
+          setInputToken(token);
+          setShowInputTokenModal(false);
+        }}
+        onClose={() => setShowInputTokenModal(false)}
+      />
+
+      <TokenSelectorModal
+        visible={showOutputTokenModal}
+        tokens={availableTokens.filter(t => t.address !== inputToken.address)}
+        selectedToken={outputToken}
+        onSelect={(token) => {
+          setOutputToken(token);
+          setShowOutputTokenModal(false);
+        }}
+        onClose={() => setShowOutputTokenModal(false)}
+      />
     </SafeAreaView>
   );
 }
